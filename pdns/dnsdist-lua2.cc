@@ -942,6 +942,78 @@ void moreLua(bool client)
         g_cachehitresprulactions.setState(rules);
       });
 
+
+
+
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Special Cache Test Functions
+// Seth Ornstein
+// GCA
+// 4/5/2017
+// -----------------------------------------------------------------------------
+// showCacheXXX() - 
+// -----------------------------------------------------------------------------
+    g_lua.writeFunction("showCacheXXX", []() {
+        setLuaNoSideEffect();
+        g_outputBuffer += "showCacheXXX() - special test function - Seth Ornstein GCA - 4/5/2017 \n";
+        boost::format fmt("%-3d %9d %-50s %s\n");
+        g_outputBuffer += (fmt % "#" % "Matches" % "Rule" % "Action").str();
+        int num=0;
+        for(const auto& lim : g_cachehitresprulactions.getCopy()) {
+          string name = lim.first->toString();
+          g_outputBuffer += (fmt % num % lim.first->d_matches % name % lim.second->toString()).str();
+          ++num;
+        }
+      });
+
+
+// -----------------------------------------------------------------------------
+// expungeByNameXXX() - expunge with debugging
+// -----------------------------------------------------------------------------
+    g_lua.registerFunction<void(std::shared_ptr<DNSDistPacketCache>::*)(const DNSName& dname, boost::optional<uint16_t> qtype, boost::optional<bool> suffixMatch)>("expungeByNameXXX", [](
+                std::shared_ptr<DNSDistPacketCache> cache,
+                const DNSName& dname,
+                boost::optional<uint16_t> qtype,
+                boost::optional<bool> suffixMatch) {
+        if (cache) {
+          cache->expungeByNameXXX(dname, qtype ? *qtype : QType::ANY, suffixMatch ? *suffixMatch : false);
+        }
+      });
+
+
+// -----------------------------------------------------------------------------
+// dumpCacheXXX() - dump the cache on the screen
+// -----------------------------------------------------------------------------
+    g_lua.registerFunction<void(std::shared_ptr<DNSDistPacketCache>::*)()>("dumpCacheXXX", [](
+                std::shared_ptr<DNSDistPacketCache> cache) {
+        if (cache) {
+          cache->dumpCacheXXX();
+        }
+      });
+
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// insertEntryXXX() -insert entry into cache
+// -----------------------------------------------------------------------------
+    g_lua.registerFunction<void(std::shared_ptr<DNSDistPacketCache>::*)(const DNSName& dname, boost::optional<uint16_t> qtype, boost::optional<bool> suffixMatch)>("insertEntryXXX", [](
+                std::shared_ptr<DNSDistPacketCache> cache,
+                const DNSName& dname,
+                boost::optional<uint16_t> qtype,
+                boost::optional<bool> suffixMatch) {
+        if (cache) {
+          cache->insertEntryXXX(dname, qtype ? *qtype : QType::ANY, suffixMatch ? *suffixMatch : false);
+        }
+      });
+
+
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+
+
+
+
+
     g_lua.writeFunction("showBinds", []() {
       setLuaNoSideEffect();
       try {

@@ -38,6 +38,31 @@ public:
   void purgeExpired(size_t upTo=0);
   void expunge(size_t upTo=0);
   void expungeByName(const DNSName& name, uint16_t qtype=QType::ANY, bool suffixMatch=false);
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Experimental Code
+// Seth Ornstein
+// Global Cyber Alliance
+// 4/6/2017
+//------------------------------------------------------------------------------
+
+  struct CacheValueExtra
+  {
+   std::string strLabel;				// text label
+   std::string strValue;				// text value
+  };
+
+  void dumpCacheXXX();
+  void expungeByNameXXX(const DNSName& name, uint16_t qtype=QType::ANY, bool suffixMatch=false);
+  void insertEntryXXX(const DNSName& name, uint16_t qtype=QType::ANY, bool suffixMatch=false);
+  bool getXXX(const DNSQuestion& dq, uint16_t consumed, uint16_t queryId, char* response, uint16_t* responseLen, uint32_t* keyOut, uint32_t allowExpired=0, bool skipAging=false);
+  void insertXXX(uint32_t key, const DNSName& qname, uint16_t qtype, uint16_t qclass, const char* response, uint16_t responseLen, bool tcp, uint8_t rcode, std::vector<CacheValueExtra> &vecExtras);
+
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
   bool isFull();
   string toString();
   uint64_t getSize() const { return d_map.size(); }
@@ -55,6 +80,18 @@ public:
 
 private:
 
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Experimental Code
+// Seth Ornstein
+// Global Cyber Alliance
+// 4/6/2017
+//------------------------------------------------------------------------------
+
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
   struct CacheValue
   {
     time_t getTTD() const { return validity; }
@@ -66,6 +103,7 @@ private:
     time_t validity{0};
     uint16_t len{0};
     bool tcp{false};
+    std::vector<CacheValueExtra> vecExtra;     // vector for extra data - Seth 4/6/2017
   };
 
   static uint32_t getKey(const DNSName& qname, uint16_t consumed, const unsigned char* packet, uint16_t packetLen, bool tcp);
