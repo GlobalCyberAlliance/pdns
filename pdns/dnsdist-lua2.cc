@@ -954,9 +954,9 @@ void moreLua(bool client)
 // -----------------------------------------------------------------------------
 // showCacheXXX() - 
 // -----------------------------------------------------------------------------
-    g_lua.writeFunction("showCacheXXX", []() {
+    g_lua.writeFunction("showCacheRulesXXX", []() {
         setLuaNoSideEffect();
-        g_outputBuffer += "showCacheXXX() - special test function - Seth Ornstein GCA - 4/5/2017 \n";
+        g_outputBuffer += "showCacheRulesXXX() - special test function - Seth Ornstein GCA - 4/5/2017 \n";
         boost::format fmt("%-3d %9d %-50s %s\n");
         g_outputBuffer += (fmt % "#" % "Matches" % "Rule" % "Action").str();
         int num=0;
@@ -994,7 +994,7 @@ void moreLua(bool client)
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-// insertEntryXXX() -insert entry into cache
+// insertEntryXXX() - insert entry into cache
 // -----------------------------------------------------------------------------
     g_lua.registerFunction<void(std::shared_ptr<DNSDistPacketCache>::*)(const DNSName& dname, boost::optional<uint16_t> qtype, boost::optional<bool> suffixMatch)>("insertEntryXXX", [](
                 std::shared_ptr<DNSDistPacketCache> cache,
@@ -1007,6 +1007,39 @@ void moreLua(bool client)
       });
 
 
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// getEntryXXX() - get entry from cache
+// -----------------------------------------------------------------------------
+    g_lua.registerFunction<void(std::shared_ptr<DNSDistPacketCache>::*)(const DNSName& dname, boost::optional<uint16_t> qtype, boost::optional<bool> suffixMatch)>("getEntryXXX", [](
+                std::shared_ptr<DNSDistPacketCache> cache,
+                const DNSName& dname,
+                boost::optional<uint16_t> qtype,
+                boost::optional<bool> suffixMatch) {
+        printf("DEBUG ---> getEntryXXX() - start \n");
+        if (cache) {
+          cache->findByNameXXX(dname, qtype ? *qtype : QType::ANY, suffixMatch ? *suffixMatch : false);
+        }
+        printf("DEBUG ---> getEntryXXX() - finish \n");
+      });
+
+
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// helpXXX() - help for special XXX lua functions
+// -----------------------------------------------------------------------------
+    g_lua.writeFunction("helpXXX", []() {
+        setLuaNoSideEffect();
+        g_outputBuffer = "dnsdist special XXX functions \n";
+        g_outputBuffer += "----------------------------- \n";
+        g_outputBuffer += "showCacheRulesXXX()   show the cache rules \n";
+        g_outputBuffer += "expungeByNameXXX()    expunge with debugging \n";
+        g_outputBuffer += "dumpCacheXXX()        dump the cache \n";
+        g_outputBuffer += "insertEntryXXX()      insert entry into cache \n";
+        g_outputBuffer += "getEntryXXX()         get entry from cache \n";
+      });
+
+// -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 

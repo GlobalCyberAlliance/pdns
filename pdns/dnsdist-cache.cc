@@ -24,6 +24,8 @@
 #include "dnsparser.hh"
 #include "dnsdist-cache.hh"
 
+#include "dnsdist-gca-misc.hh"          // Seth - GCA - 4/14/2017
+
 DNSDistPacketCache::DNSDistPacketCache(size_t maxEntries, uint32_t maxTTL, uint32_t minTTL, uint32_t tempFailureTTL, uint32_t staleTTL): d_maxEntries(maxEntries), d_maxTTL(maxTTL), d_tempFailureTTL(tempFailureTTL), d_minTTL(minTTL), d_staleTTL(staleTTL)
 {
   pthread_rwlock_init(&d_lock, 0);
@@ -388,6 +390,89 @@ void DNSDistPacketCache::expungeByNameXXX(const DNSName& name, uint16_t qtype, b
   }
   printf("DEBUG ---------------------------> DNSDistPacketCache::expungeByName - end \n");
 }
+
+
+
+//------------------------------------------------------------------------------
+// dumpAnswerXXX() - dump the dns answer from the cache
+//------------------------------------------------------------------------------
+int DNSDistPacketCache::dumpAnswerXXX(const std::string &value, uint16_t len)
+{
+int iStatus = 0;
+
+
+    iStatus = DNSDistGcaMisc::dumpDNSAnswer(value, len);
+
+    return(iStatus);
+}
+
+//------------------------------------------------------------------------------
+// findByNameXXX() - find with debugging statements
+//------------------------------------------------------------------------------
+void DNSDistPacketCache::findByNameXXX(const DNSName& name, uint16_t qtype, bool suffixMatch)
+{
+int iHits = 0;
+
+  printf("DNSDistPacketCache::findByNameXXX() - entries: %lu/%lu \n", d_map.size(), d_maxEntries);
+
+//  WriteLock w(&d_lock);
+
+  for(auto it = d_map.begin(); it != d_map.end(); ) {
+    const CacheValue& value = it->second;
+
+    if ((value.qname == name || (suffixMatch && value.qname.isPartOf(name))) && (qtype == QType::ANY || qtype == value.qtype)) {
+
+      if(iHits == 0)
+        {
+         printf("              qname                qtype   qclass          added                validity          length   TYPE    EXTRA \n");
+         printf("--------------------------------   -----   ------   -------------------    -------------------    ------   ----    ----- \n");
+        }
+
+      char strTimeAdded[32];
+      char strTimeValid[32];
+
+      const CacheValue& value = it->second;
+      strftime(strTimeAdded, 32, "%H:%M:%S %m-%d-%Y ", localtime(&value.added));
+      strftime(strTimeValid, 32, "%H:%M:%S %m-%d-%Y ", localtime(&value.validity));
+      printf("%32s   %5u   %6u   %19s   %19s   %6u   %4s   %5lu ",
+			value.qname.toString().c_str(),
+			value.qtype,
+			value.qclass,
+			strTimeAdded,
+			strTimeValid,
+			value.len,
+			value.tcp?"TCP":"UDP",
+			value.vecExtra.size()
+ 			);
+      for(unsigned int ii=0; ii < value.vecExtra.size(); ii++)
+         {
+          printf("   %s - %s ", value.vecExtra[ii].strLabel.c_str(), value.vecExtra[ii].strValue.c_str());
+         }
+      printf(" strlen-> %lu ", value.value.length());          // length of string
+      printf("\n");
+
+
+
+      printf("Try and resolve the answer.... \n");
+      printf("Code borrowed from:  http://www.binarytides.com/dns-query-code-in-c-with-linux-sockets/ \n");
+
+      dumpAnswerXXX(value.value, value.len);                    // dump the answer
+
+
+      iHits++;                                                  // hit counter
+
+
+    } else {
+/*
+      printf("DNSDistPacketCache::findByNameXXX() - NOT_match: %s   value-name: %s   name: %s \n",
+ 						(value.qname == name)?"Yes":"No", value.qname.toString().c_str(), name.toString().c_str());
+*/
+    }
+   ++it;
+  }
+  printf("DNSDistPacketCache::findByNameXXX() - Hits: %d \n", iHits);
+}
+
 
 
 //------------------------------------------------------------------------------

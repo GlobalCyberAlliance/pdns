@@ -55,6 +55,8 @@ public:
 
   void dumpCacheXXX();
   void expungeByNameXXX(const DNSName& name, uint16_t qtype=QType::ANY, bool suffixMatch=false);
+  int  dumpAnswerXXX(const std::string &value, uint16_t len);
+  void findByNameXXX(const DNSName& name, uint16_t qtype=QType::ANY, bool suffixMatch=false);
   void insertEntryXXX(const DNSName& name, uint16_t qtype=QType::ANY, bool suffixMatch=false);
   bool getXXX(const DNSQuestion& dq, uint16_t consumed, uint16_t queryId, char* response, uint16_t* responseLen, uint32_t* keyOut, uint32_t allowExpired=0, bool skipAging=false);
   void insertXXX(uint32_t key, const DNSName& qname, uint16_t qtype, uint16_t qclass, const char* response, uint16_t responseLen, bool tcp, uint8_t rcode, std::vector<CacheValueExtra> &vecExtras);

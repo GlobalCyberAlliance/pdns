@@ -64,6 +64,7 @@ endif
 dnsdist-web.$(OBJEXT): htmlfiles.h
 
 dnsdist_SOURCES = \
+        dnsdist-gca-misc.hh dnsdist-gca-misc.cc \
 	base64.hh \
 	bpf-filter.cc bpf-filter.hh \
 	dns.cc dns.hh \
