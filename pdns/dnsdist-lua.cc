@@ -1526,6 +1526,19 @@ vector<std::function<void(void)>> setupLua(bool client, const std::string& confi
 
   /* DNSQuestion bindings */
   /* PowerDNS DNSQuestion compat */
+  // --------------------------------------------------------------------------
+  // Extra string in DNSQuestion - Seth - 5/9/2017
+
+    g_lua.registerFunction<void(DNSQuestion::*)(std::string)>("setExtraXXX", [](DNSQuestion& dq, const std::string& strVal) {
+//    printf("DEBUG --------> setExtraXXX() - %s \n", strVal.c_str());
+       dq.strExtraXXX = strVal;
+//    printf("DEBUG --------> setExtraXXX() - done \n");
+    });
+
+
+  g_lua.registerFunction<string(DNSQuestion::*)()>("getExtraXXX", [](const DNSQuestion& dq ) { return dq.strExtraXXX; });
+
+  // --------------------------------------------------------------------------
   g_lua.registerMember<const ComboAddress (DNSQuestion::*)>("localaddr", [](const DNSQuestion& dq) -> const ComboAddress { return *dq.local; }, [](DNSQuestion& dq, const ComboAddress newLocal) { (void) newLocal; });
   g_lua.registerMember<const DNSName (DNSQuestion::*)>("qname", [](const DNSQuestion& dq) -> const DNSName { return *dq.qname; }, [](DNSQuestion& dq, const DNSName newName) { (void) newName; });
   g_lua.registerMember<uint16_t (DNSQuestion::*)>("qtype", [](const DNSQuestion& dq) -> uint16_t { return dq.qtype; }, [](DNSQuestion& dq, uint16_t newType) { (void) newType; });

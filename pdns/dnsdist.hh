@@ -546,7 +546,8 @@ struct DNSQuestion
   const bool tcp;
   bool skipCache{false};
   bool ecsOverride;
-  bool useECS{true};    
+  bool useECS{true};
+  std::string strExtraXXX;                 // extra string for blacklist hit - Seth - 5/8/2017
 };
 
 struct DNSResponse : DNSQuestion

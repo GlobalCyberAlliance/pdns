@@ -777,6 +777,24 @@ void moreLua(bool client)
         message.setResponder(str);
       });
 
+// ----------------------------------------------------------------------------
+// Seth - 5/9/2017
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&)>("setExtraMsgXXX", [](DNSDistProtoBufMessage& message, const std::string& str) {
+        message.setExtraMsgXXX(str);
+      });
+
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(uint32_t)>("setExtraValXXX", [](DNSDistProtoBufMessage& message, uint32_t uValue) {
+        message.setExtraValXXX(uValue);
+      });
+
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&, uint32_t, const std::string& )>("setExtraFieldsXXX", [](DNSDistProtoBufMessage& message, const std::string& strName, uint32_t iValue, const std::string& strSValue) {
+        message.setExtraFieldsXXX(strName, iValue, strSValue);
+      });
+
+// ----------------------------------------------------------------------------
+
     g_lua.writeFunction("newRemoteLogger", [client](const std::string& remote, boost::optional<uint16_t> timeout, boost::optional<uint64_t> maxQueuedEntries, boost::optional<uint8_t> reconnectWaitTime) {
         return std::make_shared<RemoteLogger>(ComboAddress(remote), timeout ? *timeout : 2, maxQueuedEntries ? *maxQueuedEntries : 100, reconnectWaitTime ? *reconnectWaitTime : 1);
       });
@@ -1010,18 +1028,23 @@ void moreLua(bool client)
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // getEntryXXX() - get entry from cache
+//                 now returns number of hits.... 5/2/2017
 // -----------------------------------------------------------------------------
-    g_lua.registerFunction<void(std::shared_ptr<DNSDistPacketCache>::*)(const DNSName& dname, boost::optional<uint16_t> qtype, boost::optional<bool> suffixMatch)>("getEntryXXX", [](
+//    g_lua.registerFunction<void(std::shared_ptr<DNSDistPacketCache>::*)(const DNSName& dname, boost::optional<uint16_t> qtype, boost::optional<bool> suffixMatch)>("getEntryXXX", [](
+    g_lua.registerFunction<int(std::shared_ptr<DNSDistPacketCache>::*)(const DNSName& dname, boost::optional<uint16_t> qtype, boost::optional<bool> suffixMatch)>("getEntryXXX", [](
                 std::shared_ptr<DNSDistPacketCache> cache,
                 const DNSName& dname,
                 boost::optional<uint16_t> qtype,
                 boost::optional<bool> suffixMatch) {
         printf("DEBUG ---> getEntryXXX() - start \n");
+        int iHits = 0;
         if (cache) {
-          cache->findByNameXXX(dname, qtype ? *qtype : QType::ANY, suffixMatch ? *suffixMatch : false);
+          iHits = cache->findByNameXXX(dname, qtype ? *qtype : QType::ANY, suffixMatch ? *suffixMatch : false);
         }
-        printf("DEBUG ---> getEntryXXX() - finish \n");
+        printf("DEBUG ---> getEntryXXX() - finish, iHits: %d \n", iHits);
+        return(iHits);
       });
+
 
 
 // -----------------------------------------------------------------------------
@@ -1033,10 +1056,10 @@ void moreLua(bool client)
         g_outputBuffer = "dnsdist special XXX functions \n";
         g_outputBuffer += "----------------------------- \n";
         g_outputBuffer += "showCacheRulesXXX()   show the cache rules \n";
-        g_outputBuffer += "expungeByNameXXX()    expunge with debugging \n";
-        g_outputBuffer += "dumpCacheXXX()        dump the cache \n";
-        g_outputBuffer += "insertEntryXXX()      insert entry into cache \n";
-        g_outputBuffer += "getEntryXXX()         get entry from cache \n";
+        g_outputBuffer += "expungeByNameXXX()    expunge with debugging.  ex: getPool(\"masterpool\"):getCache():expungeByName(newDNSName(\"google.com.\")) \n";
+        g_outputBuffer += "dumpCacheXXX()        dump the cache.          ex: getPool(\"masterpool\"):getCache():dumpCacheXXX() \n";
+        g_outputBuffer += "insertEntryXXX()      insert entry into cache. ex: getPool(\"masterpool\"):getCache():insertEntryXXX(newDNSName(\"google.com.\")) \n";
+        g_outputBuffer += "getEntryXXX()         get entry from cache.    ex: getPool(\"masterpool\"):getCache():getEntryXXX(newDNSName(\"google.com.\")) \n";
       });
 
 // -----------------------------------------------------------------------------

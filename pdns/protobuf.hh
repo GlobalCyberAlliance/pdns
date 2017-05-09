@@ -70,6 +70,16 @@ public:
   void setResponder(const ComboAddress& responder);
   std::string toDebugString() const;
 
+// ----------------------------------------------------------------------------
+// Extra protobuf information - Seth 5/9/2017
+// ----------------------------------------------------------------------------
+
+  void setExtraMsgXXX(const std::string& strExtraMsg);
+  void setExtraValXXX(uint32_t uValue);
+  void setExtraFieldsXXX(const std::string& strExtraName, uint32_t uValue, const std::string& strSValue);
+
+// ----------------------------------------------------------------------------
+
 #ifdef HAVE_PROTOBUF
   DNSProtoBufMessage(DNSProtoBufMessage::DNSProtoBufMessageType type, const boost::uuids::uuid& uuid, const ComboAddress* requestor, const ComboAddress* responder, const DNSName& domain, int qtype, uint16_t qclass, uint16_t qid, bool isTCP, size_t bytes);
   void update(const boost::uuids::uuid& uuid, const ComboAddress* requestor, const ComboAddress* responder, bool isTCP, uint16_t id);

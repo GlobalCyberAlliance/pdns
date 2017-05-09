@@ -215,6 +215,64 @@ void DNSProtoBufMessage::setResponder(const ComboAddress& responder)
 #endif /* HAVE_PROTOBUF */
 }
 
+// ----------------------------------------------------------------------------
+// seth - 5/9/2017
+// ----------------------------------------------------------------------------
+void DNSProtoBufMessage::setExtraMsgXXX(const std::string& strExtraMsg)
+{
+#ifdef HAVE_PROTOBUF
+
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraMsgXXX() - start \n");
+
+    d_message.set_extramsg(strExtraMsg);
+
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraMsgXXX() - end \n");
+
+#endif /* HAVE_PROTOBUF */
+}
+
+void DNSProtoBufMessage::setExtraValXXX(uint32_t uValue)
+{
+#ifdef HAVE_PROTOBUF
+
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraValXXX() - start \n");
+
+    d_message.set_extraval(uValue);
+
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraValXXX() - end \n");
+
+#endif /* HAVE_PROTOBUF */
+}
+
+void DNSProtoBufMessage::setExtraFieldsXXX(const std::string& strExtraName, uint32_t uValue, const std::string& strSValue)
+{
+#ifdef HAVE_PROTOBUF
+
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraFieldsXXX() - start \n");
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraFieldsXXX() - Name: %s   iValue: %d   SValue: %s \n", strExtraName.c_str(), uValue, strSValue.c_str());
+
+
+    PBDNSMessage_extraField* xx = d_message.add_extrafields();
+      if (xx) {
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraFieldsXXX() - xx not null \n");
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraFieldsXXX() - Name: %s   iValue: %d   SValue: %s \n", strExtraName.c_str(), uValue, strSValue.c_str());
+
+        xx->set_name(strExtraName.c_str());
+        xx->set_ivalue(uValue);
+        xx->set_svalue(strSValue.c_str());
+      }
+
+
+//    printf("-----------------> DEBUG DNSProtoBufMessage::setExtraFieldsXXX() - end \n");
+
+#endif /* HAVE_PROTOBUF */
+
+
+
+}
+// ----------------------------------------------------------------------------
+
+
 void DNSProtoBufMessage::serialize(std::string& data) const
 {
 #ifdef HAVE_PROTOBUF

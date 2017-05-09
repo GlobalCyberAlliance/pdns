@@ -75,4 +75,23 @@ message PBDNSMessage {
   optional bytes originalRequestorSubnet = 14;  // EDNS Client Subnet value
   optional string requestorId = 15;             // Username of the requestor
   optional bytes initialRequestId = 16;         // UUID of the incoming query that initiated this outgoing query or incoming response
+
+
+  enum answerFlag {				// Answer flags - Seth 5/9/2017
+    OTHER   = 0;				// Other
+    BLKLST  = 1;				// Blacklist
+    CACHE   = 2;				// Cache
+    FORWARD = 3;                                 // Normal
+  }
+
+  optional string extraMsg = 17;		// extra msg - Seth 5/9/2017
+  optional uint32 extraVal = 18;		// extra val - Seth 5/9/2017
+
+  message extraField{
+     optional string name   = 1;
+     optional uint32 iValue = 2;
+     optional string sValue = 3;
+    }
+  repeated extraField extraFields = 19;		// extra fields - Seth 5/9/2017
+
 }

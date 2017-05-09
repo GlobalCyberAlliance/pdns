@@ -139,9 +139,21 @@ void DNSDistPacketCache::insert(uint32_t key, const DNSName& qname, uint16_t qty
   }
 }
 
+//#define SETH_DEBUG 1
+
+#ifdef SETH_DEBUG
 bool DNSDistPacketCache::get(const DNSQuestion& dq, uint16_t consumed, uint16_t queryId, char* response, uint16_t* responseLen, uint32_t* keyOut, uint32_t allowExpired, bool skipAging)
 {
+    return(getXXX(dq, consumed, queryId, response, responseLen, keyOut, allowExpired, skipAging));
+}
+
+#else
+
+bool DNSDistPacketCache::get(const DNSQuestion& dq, uint16_t consumed, uint16_t queryId, char* response, uint16_t* responseLen, uint32_t* keyOut, uint32_t allowExpired, bool skipAging)
+{
+//  printf("DEBUG -----> get - start()   qname: %s \n", dq.qname->toString().c_str());                    // debug
   uint32_t key = getKey(*dq.qname, consumed, (const unsigned char*)dq.dh, dq.len, dq.tcp);
+//  uint32_t key = getKeyXXX(*dq.qname, consumed, (const unsigned char*)dq.dh, dq.len, dq.tcp);           // for debugging - Seth
   if (keyOut)
     *keyOut = key;
 
@@ -218,6 +230,8 @@ bool DNSDistPacketCache::get(const DNSQuestion& dq, uint16_t consumed, uint16_t 
   d_hits++;
   return true;
 }
+
+#endif
 
 /* Remove expired entries, until the cache has at most
    upTo entries in it.
@@ -337,8 +351,8 @@ void DNSDistPacketCache::dumpCacheXXX()
   ReadLock r(&d_lock);				// lock for reading......
 
   printf("DNSDistPacketCache::dumpCache() - entries: %lu/%lu \n", d_map.size(), d_maxEntries);
-  printf("              qname                qtype   qclass          added                validity          length   TYPE    EXTRA \n");
-  printf("--------------------------------   -----   ------   -------------------    -------------------    ------   ----    ----- \n");
+  printf("   key                   qname                qtype   qclass          added                validity          length   TYPE    EXTRA \n");
+  printf("--------   --------------------------------   -----   ------   -------------------    -------------------    ------   ----    ----- \n");
 
   char strTimeAdded[32];
   char strTimeValid[32];
@@ -347,7 +361,8 @@ void DNSDistPacketCache::dumpCacheXXX()
     const CacheValue& value = it->second;
     strftime(strTimeAdded, 32, "%H:%M:%S %m-%d-%Y ", localtime(&value.added));
     strftime(strTimeValid, 32, "%H:%M:%S %m-%d-%Y ", localtime(&value.validity));
-    printf("%32s   %5u   %6u   %19s   %19s   %6u   %4s   %5lu ",
+    printf("%08X   %32s   %5u   %6u   %19s   %19s   %6u   %4s   %5lu ",
+            it->first,
 			value.qname.toString().c_str(),
 			value.qtype,
 			value.qclass,
@@ -408,8 +423,9 @@ int iStatus = 0;
 
 //------------------------------------------------------------------------------
 // findByNameXXX() - find with debugging statements
+//          was void, now returning number of hits...... 5/2/2017
 //------------------------------------------------------------------------------
-void DNSDistPacketCache::findByNameXXX(const DNSName& name, uint16_t qtype, bool suffixMatch)
+int DNSDistPacketCache::findByNameXXX(const DNSName& name, uint16_t qtype, bool suffixMatch)
 {
 int iHits = 0;
 
@@ -471,21 +487,115 @@ int iHits = 0;
    ++it;
   }
   printf("DNSDistPacketCache::findByNameXXX() - Hits: %d \n", iHits);
+  return(iHits);
 }
 
 
+
+//------------------------------------------------------------------------------
+// getKeyXXX() -
+//------------------------------------------------------------------------------
+uint32_t DNSDistPacketCache::getKeyXXX(const DNSName& qname, uint16_t consumed, const unsigned char* packet, uint16_t packetLen, bool tcp)
+{
+int iDebugLevel = 1;                     // debug level - Seth
+
+  uint32_t result = 0;
+
+  if(iDebugLevel > 0)
+    printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX - start \n");
+
+//  DNSDistGcaMisc::print_buf("getKeyXXX - packet", packet, packetLen);           // byte dump
+  if(iDebugLevel > 0)
+     DNSDistGcaMisc::print_buf("getKeyXXX - qname", (const unsigned char *) &qname, 10);           // byte dump
+
+
+
+
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX - packetLength: %d   \n", packetLen);
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX - consumed: %d   \n", consumed);
+//  printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX - qname: %s \n", qname.toString().c_str());
+
+
+  if(iDebugLevel > 0)
+    printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX      qname: %s   consumed: %d  packetLength: %d   tcp: %s   \n", qname.toString().c_str(), consumed, packetLen, tcp?"Yes":"No");
+
+//  printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX      dnsheader size: %lu   qnameLC: %s   lc length: %lu \n", sizeof(dnsheader), qname.toDNSStringLC().c_str(), qname.toDNSStringLC().length());
+
+
+//  printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX   calling dumpDNS() \n");
+//  DNSDistGcaMisc::dumpDNS(packet, packetLen);
+//  printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX   back from dumpDNS() \n");
+
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX      check packetLen: %d and dnsheader size: %lu \n", packetLen, sizeof(dnsheader));
+
+  /* skip the query ID */
+  if (packetLen < sizeof(dnsheader))
+    throw std::range_error("Computing packet cache key for an invalid packet size");
+
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX      calling burtle \n");
+
+  result = burtle(packet + 2, sizeof(dnsheader) - 2, result);
+
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX      result after burtle-1: %08X \n", result);
+
+
+  string lc(qname.toDNSStringLC());
+  result = burtle((const unsigned char*) lc.c_str(), lc.length(), result);
+
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX      result after burtle-2: %08X \n", result);
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX      packetLen: %u   sizeof_dnsheader: %lu   consumed: %d \n",  packetLen, sizeof(dnsheader), consumed);
+
+  if (packetLen < sizeof(dnsheader) + consumed) {
+    throw std::range_error("Computing packet cache key for an invalid packet");
+  }
+  if (packetLen > ((sizeof(dnsheader) + consumed))) {
+    result = burtle(packet + sizeof(dnsheader) + consumed, packetLen - (sizeof(dnsheader) + consumed), result);
+
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX      result after burtle-3: %08X \n", result);
+
+  }
+  result = burtle((const unsigned char*) &tcp, sizeof(tcp), result);
+
+  if(iDebugLevel > 0)
+    printf("DEBUG ---------------------------> DNSDistPacketCache::getKeyXXX   Key: %08X \n", result);
+
+  return result;
+}
 
 //------------------------------------------------------------------------------
 // getXXX() -
 //------------------------------------------------------------------------------
 bool DNSDistPacketCache::getXXX(const DNSQuestion& dq, uint16_t consumed, uint16_t queryId, char* response, uint16_t* responseLen, uint32_t* keyOut, uint32_t allowExpired, bool skipAging)
 {
+int iDebugLevel = 0;
+printf("DEBUG ---------------------------> DNSDistPacketCache::getXXX - start  consumed: %d   dq.len: %d \n", consumed, dq.len);
 
-printf("DEBUG ---------------------------> DNSDistPacketCache::getXXX - start \n");
+   if(iDebugLevel > 0)
+     {
+      DNSDistGcaMisc::print_buf("question", (const unsigned char *) &dq, dq.len);
+      printf("\n");
+     }
+//DNSDistGcaMisc::print_buf("qname", (const unsigned char *) *dq.qname, 10);
+//printf("\n");
 
-  uint32_t key = getKey(*dq.qname, consumed, (const unsigned char*)dq.dh, dq.len, dq.tcp);
+//printf("DEBUG ---------------------------> DNSDistPacketCache::getXXX - qname: %s \n", dq.qname->toString().c_str());
+
+  uint32_t key = getKeyXXX(*dq.qname, consumed, (const unsigned char*)dq.dh, dq.len, dq.tcp);
+
+  if(iDebugLevel > 0)
+     printf("DEBUG ---------------------------> DNSDistPacketCache::getXXX - back from getKeyXXX() \n");
+
   if (keyOut)
     *keyOut = key;
+
 
   time_t now = time(NULL);
   time_t age;
@@ -504,7 +614,7 @@ printf("DEBUG ---------------------------> DNSDistPacketCache::getXXX - start \n
     if (it == d_map.end()) {
       d_misses++;
 
-  printf("DEBUG ---------------------------> DNSDistPacketCache::getXXX - false - got to end \n");
+  printf("DEBUG ---------------------------> DNSDistPacketCache::getXXX - false - misses: %lu \n",  (unsigned long) d_misses );
 
       return false;
     }
@@ -587,6 +697,15 @@ printf("DEBUG ---------------------------> DNSDistPacketCache::getXXX - start \n
 
 }
 
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// include for handleEDNSClientSubnet()
+
+#include "dnsdist-ecs.hh"
+
+
+
 //------------------------------------------------------------------------------
 // insertEntryXXX() - insertEntry into cache
 //------------------------------------------------------------------------------
@@ -595,11 +714,13 @@ void DNSDistPacketCache::insertEntryXXX(const DNSName& name, uint16_t qtype, boo
   printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - start \n");
 
 
-      DNSName a=name;
+      DNSName a = name;
       ComboAddress remote;
       vector<uint8_t> query;
       DNSPacketWriter pwQ(query, a, QType::A, QClass::IN, 0);
       pwQ.getHeader()->rd = 1;
+
+      pwQ.getHeader()->id = htons(12345);          // debug - Seth
 
       vector<uint8_t> response;
       DNSPacketWriter pwR(response, a, QType::A, QClass::IN, 0);
@@ -616,27 +737,109 @@ void DNSDistPacketCache::insertEntryXXX(const DNSName& name, uint16_t qtype, boo
       uint16_t responseBufSize = sizeof(responseBuf);
       uint32_t key = 0;
       DNSQuestion dq(&a, QType::A, QClass::IN, &remote, &remote, (struct dnsheader*) query.data(), query.size(), query.size(), false);
-      bool bFound = getXXX(dq, a.wirelength(), 0, responseBuf, &responseBufSize, &key);
 
-  printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - Found in cache before insert: %s \n", bFound?"Yes":"No");
+      bool bAddEDNS = false;        // skip edns stuff now cause it doesn't work for me......
+      if(bAddEDNS)
+        {                           // from dnsrulactions.cc
+         std::string query;
+         std::string larger;
+         uint16_t len = dq.len;
+         bool ednsAdded = false;
+         bool ecsAdded = false;
+         query.reserve(dq.size);
+         query.assign((char*) dq.dh, len);
+
+         handleEDNSClientSubnet((char*) query.c_str(), query.size(), dq.qname->wirelength(), &len, larger, &ednsAdded, &ecsAdded, *dq.remote, dq.ecsOverride, dq.ecsPrefixLength);
+
+         printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - ednsAdded: %s   ecsAdded: %s   largerPacket: %lu \n", ednsAdded?"Yes":"No", ecsAdded?"Yes":"No", larger.length());
+
+         printf("DEBUG ---------------------------> CALLING MOADNSParser \n");
+         MOADNSParser mdp(true, larger.c_str(), larger.size());
+         printf("DEBUG ---------------------------> mdp.d_qname.toString(): %s \n", mdp.d_qname.toString().c_str());
+
+//         MOADNSParser mdp(true, larger.c_str(), 49);            // try and cause an error......
+
+         printf("DEBUG ---------------------------> returned from validateQuery, largerPacket.size(): %lu \n", larger.size());
+         if (larger.empty())
+           {                // user query.c_str() and len
+            bool bFound = getXXX(dq, dq.len, 0, responseBuf, &responseBufSize, &key);
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - larger.empty() \n");
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - Found in cache before insert: %s    key: %u \n", bFound?"Yes":"No", key);
 
 
-      std::vector<CacheValueExtra> vecExtras;
+            std::vector<CacheValueExtra> vecExtras;
 
-      int ii = 1;
-      struct CacheValueExtra evTemp;
-      std::stringstream ss;
-      ss << "test " << ii;
-      evTemp.strLabel = ss.str();
-      ss.str("");
-      ss << "val " << ii;
-      evTemp.strValue = ss.str();
-      vecExtras.push_back(evTemp);
+            int ii = 1;
+            struct CacheValueExtra evTemp;
+            std::stringstream ss;
+            ss << "test " << ii;
+            evTemp.strLabel = ss.str();
+            ss.str("");
+            ss << "val " << ii;
+            evTemp.strValue = ss.str();
+            vecExtras.push_back(evTemp);
+
+            insertXXX(key, a, QType::A, QClass::IN, (const char*) response.data(), responseLen, false, 0, vecExtras);
+           }
+         else
+           {                // use larger.c_str() and larger.length()
+            DNSQuestion *dnsq = (DNSQuestion *) larger.c_str();             // need to change this????
+
+            DNSDistGcaMisc::print_buf("larger", (const unsigned char *) larger.c_str(), larger.length());
+
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - call dump   len: %u  dq.len: %u   query.length(): %lu   dsnq->len: %d   larger.length(): %lu \n", len, dq.len, query.length(), dnsq->len, larger.length());
+            DNSDistGcaMisc::dumpDNS((const unsigned char*) larger.c_str(), larger.length());
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - back from dump \n");
+
+                    // getXXX()   2nd=length of dns header
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - calling getXXX() - dsnq.len: %d   a.wirelength(): %lu   larger.length(): %lu \n", dnsq->len, a.wirelength(), larger.length());
+            bool bFound = getXXX(*dnsq, a.wirelength(), 0, responseBuf, &responseBufSize, &key);
+
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - larger: %lu  \n", larger.length());
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - Found in cache before insert: %s    key: %u \n", bFound?"Yes":"No", key);
 
 
-      insertXXX(key, a, QType::A, QClass::IN, (const char*) response.data(), responseLen, false, 0, vecExtras);
+            std::vector<CacheValueExtra> vecExtras;
 
-  printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - end \n");
+            int ii = 1;
+            struct CacheValueExtra evTemp;
+            std::stringstream ss;
+            ss << "test " << ii;
+            evTemp.strLabel = ss.str();
+            ss.str("");
+            ss << "val " << ii;
+            evTemp.strValue = ss.str();
+            vecExtras.push_back(evTemp);
+
+            insertXXX(key, a, QType::A, QClass::IN, (const char*) response.data(), responseLen, false, 0, vecExtras);
+           }
+        }
+      else
+        {                   // didn't need to add edns
+
+         bool bFound = getXXX(dq, a.wirelength(), 0, responseBuf, &responseBufSize, &key);
+
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - EDNS not added - normal. \n");
+            printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - Found in cache before insert: %s    key: %u \n", bFound?"Yes":"No", key);
+
+
+         std::vector<CacheValueExtra> vecExtras;
+
+         int ii = 1;
+         struct CacheValueExtra evTemp;
+         std::stringstream ss;
+         ss << "test " << ii;
+         evTemp.strLabel = ss.str();
+         ss.str("");
+         ss << "val " << ii;
+         evTemp.strValue = ss.str();
+         vecExtras.push_back(evTemp);
+
+
+         insertXXX(key, a, QType::A, QClass::IN, (const char*) response.data(), responseLen, false, 0, vecExtras);
+        }
+
+     printf("DEBUG ---------------------------> DNSDistPacketCache::insertEntryXXX - end \n");
 }
 
 //------------------------------------------------------------------------------

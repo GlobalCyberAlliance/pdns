@@ -155,6 +155,28 @@ class PDNSPBConnHandler(object):
                                                                            messageidstr,
                                                                            initialrequestidstr))
 
+# ------------------------------------------------------------------------------
+# extra fields - Seth 5/9/2017
+# ------------------------------------------------------------------------------
+
+        if msg.HasField('extraMsg'):
+              print('------> ExtraMsg...: %s' % msg.extraMsg)
+        if msg.HasField('extraVal'):
+              print('------> ExtraVal...: %d' % msg.extraVal)
+              strAns = {
+                   dnsmessage_pb2.PBDNSMessage.OTHER:   "other",
+                   dnsmessage_pb2.PBDNSMessage.BLKLST:  "blacklist",
+                   dnsmessage_pb2.PBDNSMessage.CACHE:   "cache",
+                   dnsmessage_pb2.PBDNSMessage.FORWARD: "forward",
+              }[msg.extraVal]
+              print('------> AnsFlag....: %s' % strAns)
+        extraFieldCount  = len(msg.extraFields)
+        print('------> ExtraFields: %d' % extraFieldCount)
+        for ii in msg.extraFields:
+              print('------> name: %s   iValue: %d   sValue: %s' % (ii.name, ii.iValue, ii.sValue))
+
+# ------------------------------------------------------------------------------
+
     def getRequestorSubnet(self, msg):
         requestorstr = None
         if msg.HasField('originalRequestorSubnet'):
