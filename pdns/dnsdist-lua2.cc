@@ -793,6 +793,26 @@ void moreLua(bool client)
         message.setExtraFieldsXXX(strName, iValue, strSValue);
       });
 
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&)>("setAppliedPolicyXXX", [](DNSDistProtoBufMessage& message, const std::string& strAppliedPolicy) {
+        message.setAppliedPolicyXXX(strAppliedPolicy);          // use appliedpolicy to store text - not used by dnsdist at present?
+      });
+
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&)>("addTagsXXX", [](DNSDistProtoBufMessage& message, const std::string& strTag) {
+        message.addTagsXXX(strTag);                             // add a tag to store text - not used by dnsdist at present?
+      });
+
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&, const std::string&)>("setProtobufResponseTypeXXX", [](DNSDistProtoBufMessage& message, const std::string& strQueryName, const std::string& strAppliedPolicy) {
+        message.setType(DNSProtoBufMessage::Response);          // set protobuf type to be response - not query
+
+        struct timespec ts;                                     // set protobuf query time - lua can't do microsec
+        gettime(&ts, true);
+        message.setQueryTime(ts.tv_sec, ts.tv_nsec / 1000);
+
+        message.addRRsXXX(strQueryName);                        // add a RR to the response
+
+        message.setAppliedPolicyXXX(strAppliedPolicy);          // use appliedpolicy to store text - not used by dnsdist at present?
+      });
+
 // ----------------------------------------------------------------------------
 
     g_lua.writeFunction("newRemoteLogger", [client](const std::string& remote, boost::optional<uint16_t> timeout, boost::optional<uint64_t> maxQueuedEntries, boost::optional<uint8_t> reconnectWaitTime) {

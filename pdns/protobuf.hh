@@ -74,6 +74,9 @@ public:
 // Extra protobuf information - Seth 5/9/2017
 // ----------------------------------------------------------------------------
 
+  void addTagsXXX(const std::string& strTag);
+  void setAppliedPolicyXXX(const std::string& strAppliedPolicy);
+  void addRRsXXX(const std::string& strName);
   void setExtraMsgXXX(const std::string& strExtraMsg);
   void setExtraValXXX(uint32_t uValue);
   void setExtraFieldsXXX(const std::string& strExtraName, uint32_t uValue, const std::string& strSValue);

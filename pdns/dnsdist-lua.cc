@@ -182,6 +182,19 @@ vector<std::function<void(void)>> setupLua(bool client, const std::string& confi
   g_launchWork= new vector<std::function<void(void)>>();
   typedef std::unordered_map<std::string, boost::variant<bool, std::string, vector<pair<int, std::string> > > > newserver_t;
 
+// ----------------------------------------------------------------------------
+// Seth - 5/11/2017 - response lua variables to call function with
+// ----------------------------------------------------------------------------
+
+  g_lua.writeVariable("DNSRespMethXXX", std::unordered_map<string,int>{
+      {"Other",     (int) PBDNSMessage_answerFlag_OTHER  },
+      {"Blacklist", (int) PBDNSMessage_answerFlag_BLKLST },
+      {"Cache",     (int) PBDNSMessage_answerFlag_CACHE },
+      {"Forward",   (int) PBDNSMessage_answerFlag_FORWARD }
+    });
+
+// ----------------------------------------------------------------------------
+
   g_lua.writeVariable("DNSAction", std::unordered_map<string,int>{
       {"Drop", (int)DNSAction::Action::Drop},
       {"Nxdomain", (int)DNSAction::Action::Nxdomain},

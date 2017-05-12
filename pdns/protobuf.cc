@@ -96,8 +96,72 @@ void DNSProtoBufMessage::setEDNSSubnet(const Netmask& subnet, uint8_t mask)
 #endif /* HAVE_PROTOBUF */
 }
 
+// ----------------------------------------------------------------------------
+// Seth - 5/11/2017
+// ----------------------------------------------------------------------------
+
+
+
+void DNSProtoBufMessage::addTagsXXX(const std::string& strName)
+{
+#ifdef HAVE_PROTOBUF
+
+  PBDNSMessage_DNSResponse* response = d_message.mutable_response();
+  if (!response)
+    return;
+
+  response->add_tags(strName);
+
+#endif /* HAVE_PROTOBUF */
+}
+
+void DNSProtoBufMessage::setAppliedPolicyXXX(const std::string& strName)
+{
+#ifdef HAVE_PROTOBUF
+
+  PBDNSMessage_DNSResponse* response = d_message.mutable_response();
+  if (!response)
+    return;
+
+  response->set_appliedpolicy(strName);
+
+#endif /* HAVE_PROTOBUF */
+}
+
+
+void DNSProtoBufMessage::addRRsXXX(const std::string& strName)
+{
+#ifdef HAVE_PROTOBUF
+
+  PBDNSMessage_DNSResponse* response = d_message.mutable_response();
+  if (!response)
+    return;
+
+  PBDNSMessage_DNSResponse_DNSRR* rr = response->add_rrs();
+      if (rr) {
+        string blob;
+        rr->set_name(strName.c_str());
+        rr->set_type(1);
+        rr->set_class_(1);
+        rr->set_ttl(123);
+        char cTemp[4];
+        cTemp[0] = 127;
+        cTemp[1] = 0;
+        cTemp[2] = 0;
+        cTemp[3] = 1;
+        rr->set_rdata(cTemp, 4);
+      }
+
+#endif /* HAVE_PROTOBUF */
+}
+
+// ----------------------------------------------------------------------------
+
 void DNSProtoBufMessage::addRRsFromPacket(const char* packet, const size_t len, bool includeCNAME)
 {
+    printf("DEBUG - addRRsFromPacket() ------ start \n");   // debug
+
+
 #ifdef HAVE_PROTOBUF
   if (len < sizeof(struct dnsheader))
     return;
@@ -149,6 +213,29 @@ void DNSProtoBufMessage::addRRsFromPacket(const char* packet, const size_t len, 
 
     if (ah.d_type == QType::A || ah.d_type == QType::AAAA) {
       pr.xfrBlob(blob);
+
+
+// ----------------------------------------------------------------------------
+// Seth - debugging - 5/11/2017
+// ----------------------------------------------------------------------------
+
+    printf("DEBUG - addRRsFromPacket() \n");
+    printf("\t rrname..: %s \n", rrname.toString().c_str());
+    printf("\t type....: %d \n", ah.d_type);
+    printf("\t class...: %d \n", ah.d_class);
+    printf("\t ttl.....: %d \n", ah.d_ttl);
+//    printf("\t blob....: %s \n", blob.c_str());
+    printf("\t blob len: %lu \n", blob.length());
+    printf("\t blob....: ");
+    const unsigned char *cPtr = (const unsigned char *) blob.c_str();
+    for(unsigned int ii=0; ii < blob.length(); ii++)
+       {
+        if(ii != 0)
+          printf(".");
+        printf("%d", *cPtr++);
+       }
+    printf("\t ---- \n");
+// ----------------------------------------------------------------------------
 
       PBDNSMessage_DNSResponse_DNSRR* rr = response->add_rrs();
       if (rr) {
@@ -218,6 +305,8 @@ void DNSProtoBufMessage::setResponder(const ComboAddress& responder)
 // ----------------------------------------------------------------------------
 // seth - 5/9/2017
 // ----------------------------------------------------------------------------
+
+
 void DNSProtoBufMessage::setExtraMsgXXX(const std::string& strExtraMsg)
 {
 #ifdef HAVE_PROTOBUF
