@@ -1,0 +1,155 @@
+Notes on the dnsdist code - 5/15/2017
+Seth Ornstein
+Global Cyber Alliance
+
+dnsdist.conf - the configuration file for testing dnsdist, demonstrating added features for lua, tinycdb, RPZ, protobuf, etc.
+               contains multiple debugging print statements.
+
+dnsdist-check-config.sh - script to check the dnsdist configuration file for errors.
+
+dnsdist.sh - script to start dnsdist.
+
+my-dnsdist-build.sh - script to build dnsdist with libsodium enabled to enable cache and allow cache test to succeed.
+
+my-make-dnsdist.sh - simple script to 'make' dnsdist
+
+my-test-tinycdb.lua - test lua program for tinycdb database functioning.
+
+CDB_Database - Directory containing the tinycdb rpz test database blocklist.cdb along with test scripts.
+
+lua-tinycdb-0.2-modified-Makefile - Latest tinycdb lua callable library with modified Makefile to compile for Lua version 5.1
+
+protobuf-server.sh - simple script to start the protobuf server for use with dnsdist testing - start before dnsdist.
+                     The demo program ProtobufLogger.py has been modifed to work with my experiemental protobuf template.
+                     Note that the python program requires compiled protobuf library code (dnsmessage_pb2) which must be 
+                     compiled by following the notes in the top of the python code.  The protobuf template code is
+                     located in:  ../pdns/pdns/dnsmessage.proto
+ 
+
+NOTE: The nocookie option is used with the dig script tests as the current version of dnsdist as the packet cache 
+      currently hashes the whole query so a query with a cookie will almost never match an existing entry.  This 
+      problem is supposed to be fixed for dnsdist version 1.2.  There is no release date yet and the effort is
+      listed as 60% complete.
+
+
+      The current version of dnsdist is: 0.0.dnsdistmod.g6ff783c, which is the 1.1 version from December 29, 2016
+
+See: https://github.com/PowerDNS/pdns/issues/5131
+     https://github.com/PowerDNS/pdns/milestone/28
+
+NOTE: DNS requests are sent to port 5200 on the localhost for testing.
+
+dig-test-bad.sh - script to send out a dns request that should be in the rpz table.
+
+dig-test-nocookie-bad.sh - script to send out a dns request that should be in the rpz table, using the nocookie option.
+
+dig-test.sh - script to send out a simple dns request for google.com, this will never cache with the current version of dnsdist.
+
+dig-test-nocookie.sh - script to send out a simple dns request for google.com, with the nocookie option.
+                           
+dig-test-nocookie-X - script to send out 5 dns requests.  yahoo.com, yahooxxx.com, google.com, nytimes.com, washpost.com
+
+
+Currently added LUA commands accesable from dnsdist.conf
+
+1.  dq:setExtraXXX(tValue)       
+          
+	This command is available in a Lua function that is enabled by the addLuaAction() command.
+        The object dq is that passed to the Lua function and tValue is the string that is returned from a RPZ lookup hit.
+        The purpose of this is to pass the information from the RPZ hit to be available from the Lua function that will
+        be setting the contents of the protobuf log packet.
+
+2.  pbMsg:setExtraValXXX(DNSRespMethXXX.Forward)
+       
+        This command is available in a Lua function that is enabled by the addResponseAction() command.
+        The object pbMsg is the protobuf passed to the Lua function and the value to be inserted is an integer.
+        The integer is inserted into the protobuf as one of the new experimental values that have been added to the protobuf
+        template file for testing.  The standard integer values that are being used currently are:
+        DNSRespMethXXX.Other, DNSRespMethXXX.Blacklist, DNSRespMethXXX.Forward and DNSRespMethXXX.Cache.  Though any 
+        integer should be able to be used here.  The value is inserted into the new optional extraVal field in the protobuf.
+
+3.  pbMsg:setAppliedPolicyXXX("FWD")
+
+        This command is available in a Lua function that is enabled by the addResponseAction() command.
+	The object pbMsg is the protobuf passed to the Lua function and the value to be inserted is a string.
+        The applied policy is an existing value in the protobuf.  It is currently in use by powerdns and may
+        cause compatibility problems with existing protobuf server software.  The current strings being used in
+        the demo dnsdist.conf file are used to indicate to the protobuf server what of the 3 types of transaction
+        happened: FWD, CACHE, BLKLST - which just echo the information passed by the setExtraValXXX command.
+
+4.  strRpzInfo = dr:getExtraXXX()
+
+        This command is available in a Lua function that is enabled by the RemoteLogAction() command.
+        The object dr is the request object passed to the Lua function and is used to retrieve the string inserted
+        in the previous addLuaAction() command by setExtraXXX() (addition #1 above).
+
+5.  pbMsg:setExtraMsgXXX(strRpzInfo)
+
+        This command is available in a Lua function that is enabled by the RemoteLogAction() command.
+	The object pbMsg is the protobuf passed to the Lua function and the value to be inserted is a string.
+        The string is inserted into the new optional extraMsg field in the protobuf.
+
+6.  pbMsg:setExtraFieldsXXX("Test-1", 1, "One")    
+
+        This command is available in a Lua function that is enabled by the RemoteLogAction() command.
+	The object pbMsg is the protobuf passed to the Lua function and three values are inserted.
+        The first and last are strings and the middle one is an integer.  The three fields are stored
+        together in the new repeated extraFields in the protobuf.  More than one of these extra fields
+        can be entered as desired.  Currently it is used to store some test values to demonstrate functionality.
+
+7.  pbMsg:setResponseCode(dnsdist.NXDOMAIN)
+
+        This command is available in a Lua function that is enabled by the RemoteLogAction() command.
+	The object pbMsg is the protobuf passed to the Lua function.  It's purpose is to change the 
+        response code in the protobuf log message to be that of NXDOMAIN to allow compatability with
+        existing protobuf server software.
+
+8.  pbMsg:setProtobufResponseTypeXXX(strReqName, strExtraInfo)
+
+        This command is available in a Lua function that is enabled by the RemoteLogAction() command.
+	The object pbMsg is the protobuf passed to the Lua function.   The strReqName string is that
+        of the DNS name request.  The strExtraInfo string is that retrieved by the dr:getExtraXXX()
+        command and is used to pass the information about the RPZ hit.  Currently the second string
+        strExtraInfo is stored in the tags field of the protobuf log.  The purpose of this function
+        is to allow the protobuf log message to look like a response and not a query.
+
+9.  pbMsg:addTagsXXX("Test tag one")
+
+        This command is available in a Lua function that is enabled by the RemoteLogAction()
+        or the RemoteLogResponseAction() commands.  The object pbMsg is the protobuf passed 
+        to the Lua function.   The string will be inserted into the protobuf tag field.  
+        Multiple tags can be added by calling this function more than once.  The tag field 
+        is apparently not in use currently by either the dnsdist or powerdns programs.  This 
+        may be the least intrusive method of passing information thru the protobuf
+        log file.  If so the protobuf templace file will not have to be modified.
+
+
+
+Note: dnsdist now contains a new help command to see my experimental commands, it is:  helpXXX()
+
+
+
+Current experimental entries added to the protobuf template file - they are located at the bottom of dnsmessage.proto:
+
+
+  enum answerFlag {				// Answer flags - Seth 5/9/2017
+    OTHER   = 0;				// Other
+    BLKLST  = 1;				// Blacklist
+    CACHE   = 2;				// Cache
+    FORWARD = 3;                                 // Normal
+  }
+
+  optional string extraMsg = 17;		// extra msg - Seth 5/9/2017
+  optional uint32 extraVal = 18;		// extra val - Seth 5/9/2017
+
+  message extraField{
+     optional string name   = 1;
+     optional uint32 iValue = 2;
+     optional string sValue = 3;
+    }
+  repeated extraField extraFields = 19;		// extra fields - Seth 5/9/2017
+
+
+
+
+

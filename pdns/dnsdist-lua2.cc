@@ -801,7 +801,7 @@ void moreLua(bool client)
         message.addTagsXXX(strTag);                             // add a tag to store text - not used by dnsdist at present?
       });
 
-    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&, const std::string&)>("setProtobufResponseTypeXXX", [](DNSDistProtoBufMessage& message, const std::string& strQueryName, const std::string& strAppliedPolicy) {
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&, const std::string&)>("setProtobufResponseTypeXXX", [](DNSDistProtoBufMessage& message, const std::string& strQueryName, const std::string& strTag) {
         message.setType(DNSProtoBufMessage::Response);          // set protobuf type to be response - not query
 
         struct timespec ts;                                     // set protobuf query time - lua can't do microsec
@@ -810,7 +810,9 @@ void moreLua(bool client)
 
         message.addRRsXXX(strQueryName);                        // add a RR to the response
 
-        message.setAppliedPolicyXXX(strAppliedPolicy);          // use appliedpolicy to store text - not used by dnsdist at present?
+        message.addTagsXXX(strTag);                             // add a tag to store text - not used by dnsdist at present?
+
+//        message.setAppliedPolicyXXX(strAppliedPolicy);          // use appliedpolicy to store text - not used by dnsdist at present? - not true - apparently used by powerdns
       });
 
 // ----------------------------------------------------------------------------
@@ -1080,6 +1082,17 @@ void moreLua(bool client)
         g_outputBuffer += "dumpCacheXXX()        dump the cache.          ex: getPool(\"masterpool\"):getCache():dumpCacheXXX() \n";
         g_outputBuffer += "insertEntryXXX()      insert entry into cache. ex: getPool(\"masterpool\"):getCache():insertEntryXXX(newDNSName(\"google.com.\")) \n";
         g_outputBuffer += "getEntryXXX()         get entry from cache.    ex: getPool(\"masterpool\"):getCache():getEntryXXX(newDNSName(\"google.com.\")) \n";
+        g_outputBuffer += "functions: \n";
+        g_outputBuffer += "   setExtraXXX()                insert string into dns request object. \n";
+        g_outputBuffer += "   getExtraXXX()                get string from dns request object inserted by setExtraXXX(). \n";
+        g_outputBuffer += "   setExtraValXXX()             insert integer into protobuf log extra val field. \n";
+        g_outputBuffer += "   setExtraMsgXXX()             insert string into protobuf log  exra msg field. \n";
+        g_outputBuffer += "   setAppliedPolicyXXX()        insert string into protobuf log applied policy field. \n";
+        g_outputBuffer += "   setExtraFieldsXXX()          insert two strings and integer into protobuf log extra field. \n";
+        g_outputBuffer += "   setResponseCode()            insert response code into protobuf log response code field. \n";
+        g_outputBuffer += "   setProtobufResponseTypeXXX() insert request dns name, tag and convert query protobuf to response. \n";
+        g_outputBuffer += "   addTagsXXX()                 insert string into protobuf log tags field. \n";
+
       });
 
 // -----------------------------------------------------------------------------
