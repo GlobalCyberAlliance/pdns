@@ -11,6 +11,41 @@ import threading
 # to generate dnsmessage_pb2
 import dnsmessage_pb2
 
+
+
+
+# ------------------------------------------------------------------------------
+# Seth - from: http://stackoverflow.com/questions/35088139/how-to-make-a-thread-safe-global-counter-in-python
+# ------------------------------------------------------------------------------
+
+from multiprocessing import Process, RawValue, Lock
+import time
+
+class Counter(object):
+    def __init__(self, value=0):
+        # RawValue because we don't need it to create a Lock:
+        self.val = RawValue('i', value)
+        self.lock = Lock()
+
+    def increment(self):
+        with self.lock:
+            self.val.value += 1
+
+    def value(self):
+        with self.lock:
+            return self.val.value
+
+# ------------------------------------------------------------------------------
+
+thread_safe_counter = Counter(0)            # Seth - counter
+query_counter = Counter(0)
+resp_counter = Counter(0)
+out_query_counter = Counter(0)
+in_resp_counter = Counter(0)
+bad_msg_counter = Counter(0)
+
+# ------------------------------------------------------------------------------
+
 class PDNSPBConnHandler(object):
 
     def __init__(self, conn):
@@ -26,6 +61,11 @@ class PDNSPBConnHandler(object):
 
             msg = dnsmessage_pb2.PBDNSMessage()
             msg.ParseFromString(data)
+            
+            thread_safe_counter.increment()		# increment total count
+            print('------>   Total: %d   Query: %d   Resp: %d   OutQuery: %d   InResp: %d ' % (thread_safe_counter.value(), query_counter.value(), resp_counter.value(), out_query_counter.value(), in_resp_counter.value()))
+
+
             if msg.type == dnsmessage_pb2.PBDNSMessage.DNSQueryType:
                 self.printQueryMessage(msg)
             elif msg.type == dnsmessage_pb2.PBDNSMessage.DNSResponseType:
@@ -35,24 +75,29 @@ class PDNSPBConnHandler(object):
             elif msg.type == dnsmessage_pb2.PBDNSMessage.DNSIncomingResponseType:
                 self.printIncomingResponseMessage(msg)
             else:
+                bad_msg_counter.increment()
                 print('Discarding unsupported message type %d' % (msg.type))
 
         self._conn.close()
 
     def printQueryMessage(self, message):
+        query_counter.increment()
         self.printSummary(message, 'Query')
         self.printQuery(message)
 
     def printOutgoingQueryMessage(self, message):
+        out_query_counter.increment()
         self.printSummary(message, 'Query (O)')
         self.printQuery(message)
 
     def printResponseMessage(self, message):
+        resp_counter.increment()
         self.printSummary(message, 'Response')
         self.printQuery(message)
         self.printResponse(message)
 
     def printIncomingResponseMessage(self, message):
+        in_resp_counter.increment()
         self.printSummary(message, 'Response (I)')
         self.printQuery(message)
         self.printResponse(message)
@@ -144,7 +189,10 @@ class PDNSPBConnHandler(object):
         if requestor:
             requestorstr = ' (' + requestor + ')'
 
-        print('[%s] %s of size %d: %s%s -> %s (%s), id: %d, uuid: %s%s' % (datestr,
+ 
+        print('%d   [%s] %s of size %d: %s%s -> %s (%s), id: %d, uuid: %s%s' % (
+                                                                           thread_safe_counter.value(),
+                                                                           datestr,
                                                                            typestr,
                                                                            msg.inBytes,
                                                                            ipfromstr,
@@ -190,6 +238,7 @@ class PDNSPBConnHandler(object):
 
 class PDNSPBListener(object):
 
+
     def __init__(self, addr, port):
         res = socket.getaddrinfo(addr, port, socket.AF_UNSPEC,
                                  socket.SOCK_STREAM, 0,
@@ -211,7 +260,6 @@ class PDNSPBListener(object):
     def run(self):
         while True:
             (conn, _) = self._sock.accept()
-
             handler = PDNSPBConnHandler(conn)
             thread = threading.Thread(name='Connection Handler',
                                       target=PDNSPBConnHandler.run,

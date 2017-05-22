@@ -1548,8 +1548,31 @@ vector<std::function<void(void)>> setupLua(bool client, const std::string& confi
 //    printf("DEBUG --------> setExtraXXX() - done \n");
     });
 
+  // --------------------------------------------------------------------------
+  // 5/22/2017 - Seth setTagXXX() - label and value string entries
+
+    g_lua.registerFunction<void(DNSQuestion::*)(std::string, std::string)>("setTagXXX", [](DNSQuestion& dq, const std::string& strLabel, const std::string& strValue) {
+
+       dq.gcaXXX.add(strLabel, strValue);
+
+    });
+
+  // 5/22/2017 - Seth getTagXXX() - supply label and return value string
+
+     g_lua.registerFunction<string(DNSQuestion::*)(std::string)>("getTagXXX", [](const DNSQuestion& dq, const std::string& strLabel) {
+
+        std::string strValue = dq.gcaXXX.get(strLabel);
+        return(strValue);
+
+     });
+
+  // --------------------------------------------------------------------------
+
+
 
   g_lua.registerFunction<string(DNSQuestion::*)()>("getExtraXXX", [](const DNSQuestion& dq ) { return dq.strExtraXXX; });
+
+
 
   // --------------------------------------------------------------------------
   g_lua.registerMember<const ComboAddress (DNSQuestion::*)>("localaddr", [](const DNSQuestion& dq) -> const ComboAddress { return *dq.local; }, [](DNSQuestion& dq, const ComboAddress newLocal) { (void) newLocal; });

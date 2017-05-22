@@ -527,6 +527,89 @@ extern uint16_t g_ECSSourcePrefixV4;
 extern uint16_t g_ECSSourcePrefixV6;
 extern bool g_ECSOverride;
 
+// ----------------------------------------------------------------------------
+// Seth - 5/22/2017 - test out new extra class in DNSQuestion struct
+// ----------------------------------------------------------------------------
+
+#include <string>
+#include <unordered_map>
+
+
+class GcaXXX
+{
+public:
+
+GcaXXX(unsigned short uId = 0)
+{
+
+   uID = ntohs(uId);
+
+   printf("DEBUG ----> GcaXXX() - created   %u <------------------------- \n", uID);
+}
+
+~GcaXXX()
+{
+   printf("DEBUG ----> GcaXXX() - deleted   %u <------------------------- \n", uID);
+
+   printf("DEBUG ----> GcaXXX() - do a dump to see what is in there..... \n");
+   dump();
+}
+
+bool add(std::string strLabel, std::string strValue)
+{
+bool bStatus = true;
+
+   tagData.insert( {strLabel, strValue});
+//   tagData[strLabel] = strValue;
+   return(bStatus);
+}
+
+std::string get(const std::string& strLabel)  const
+{
+
+    std::unordered_map<std::string, std::string>::const_iterator got =tagData.find (strLabel);
+    if(got == tagData.end())
+      {
+       return("");
+      }
+    else
+      {
+       return(got->second);
+      }
+}
+
+int entries()
+{
+   return(tagData.bucket_count());
+}
+
+void dump()
+{
+   printf("DEBUG ----> GcaXXX() - DEBUG ID: %u <------------------------- \n", uID);
+
+   std::unordered_map<std::string, std::string>::iterator itr;
+    cout << "\nAll Elements: \n";
+    for (itr =tagData.begin(); itr != tagData.end(); itr++)
+       {
+        printf("   %s - %s \n", itr->first.c_str(), itr->second.c_str());
+       }
+
+    printf("\n");
+
+
+}
+
+private:
+
+    unsigned short uID;
+    std::unordered_map<std::string, std::string>tagData;
+
+};
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+
 struct DNSQuestion
 {
   DNSQuestion(const DNSName* name, uint16_t type, uint16_t class_, const ComboAddress* lc, const ComboAddress* rem, struct dnsheader* header, size_t bufferSize, uint16_t queryLen, bool isTcp): qname(name), qtype(type), qclass(class_), local(lc), remote(rem), dh(header), size(bufferSize), len(queryLen), ecsPrefixLength(rem->sin4.sin_family == AF_INET ? g_ECSSourcePrefixV4 : g_ECSSourcePrefixV6), tcp(isTcp), ecsOverride(g_ECSOverride) { }
@@ -548,6 +631,7 @@ struct DNSQuestion
   bool ecsOverride;
   bool useECS{true};
   std::string strExtraXXX;                 // extra string for blacklist hit - Seth - 5/8/2017
+  GcaXXX gcaXXX;                      // extra class for blacklist hit - Seth 5/21/2017
 };
 
 struct DNSResponse : DNSQuestion

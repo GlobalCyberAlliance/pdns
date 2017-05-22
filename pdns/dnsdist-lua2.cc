@@ -1085,6 +1085,8 @@ void moreLua(bool client)
         g_outputBuffer += "functions: \n";
         g_outputBuffer += "   setExtraXXX()                insert string into dns request object. \n";
         g_outputBuffer += "   getExtraXXX()                get string from dns request object inserted by setExtraXXX(). \n";
+        g_outputBuffer += "   setTagXXX()                  insert string into dns request object.  (label & value entries) \n";
+        g_outputBuffer += "   getTagXXX()                  get string from dns request object. (supply label, get value) \n";
         g_outputBuffer += "   setExtraValXXX()             insert integer into protobuf log extra val field. \n";
         g_outputBuffer += "   setExtraMsgXXX()             insert string into protobuf log  exra msg field. \n";
         g_outputBuffer += "   setAppliedPolicyXXX()        insert string into protobuf log applied policy field. \n";
