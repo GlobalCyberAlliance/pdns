@@ -1559,12 +1559,89 @@ vector<std::function<void(void)>> setupLua(bool client, const std::string& confi
 
   // 5/22/2017 - Seth getTagXXX() - supply label and return value string
 
-     g_lua.registerFunction<string(DNSQuestion::*)(std::string)>("getTagXXX", [](const DNSQuestion& dq, const std::string& strLabel) {
+     g_lua.registerFunction<string(DNSQuestion::*)(std::string)>("getTagMatchXXX", [](const DNSQuestion& dq, const std::string& strLabel) {
 
-        std::string strValue = dq.gcaXXX.get(strLabel);
+        std::string strValue = dq.gcaXXX.getMatch(strLabel);
         return(strValue);
 
      });
+
+
+     g_lua.registerFunction<string(DNSQuestion::*)(int)>("getTagEntryXXX", [](const DNSQuestion& dq, const int iEntry) {
+
+        std::string strValue = dq.gcaXXX.getEntry(iEntry);
+        return(strValue);
+
+     });
+
+
+     g_lua.registerFunction<std::string(DNSQuestion::*)(void)>("getTagDebugStringXXX", [](const DNSQuestion& dq) {
+
+        return(dq.gcaXXX.dumpString());
+     });
+
+     g_lua.registerFunction<int(DNSQuestion::*)(void)>("getTagCountXXX", [](const DNSQuestion& dq) {
+
+        return(dq.gcaXXX.count());
+     });
+
+
+ // 5/24/2017 - Seth getTagArrayXXX() - get the entire tag array
+
+     g_lua.registerFunction<std::unordered_map<string, string>(DNSQuestion::*)(void)>("getTagArrayXXX", [](const DNSQuestion& dq) {
+
+//        printf("DEBUG ------------------ getTagArrayXXX() - start - count: %d \n", dq.gcaXXX.count());
+
+        setLuaNoSideEffect();
+
+ #ifdef TRASH
+        std::unordered_map<string,string> darray;
+        int ii=0;
+        for(ii=0; ii < dq.gcaXXX.count(); ii++)
+           {
+            std::string strKey;
+            darray.insert( {"dude", "testValue"});
+           }
+        printf("DEBUG ------------------ getTagArrayXXX() - finish \n");
+        return darray;
+#endif
+        return dq.gcaXXX.tagData;          // direct access to tags in request ......
+      });
+
+ // 5/24/2017 - Seth setTagArrayXXX() - set the entire tag array
+
+
+     g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(vector<pair<string, string>>)>("setTagArrayXXX", [](DNSDistProtoBufMessage& message, const vector<pair<string, string>>&tags) {
+
+     printf("DEBUG ------------------ setTagArrayXXX() - start -  \n");
+
+     for (const auto& tag : tags)
+        {
+         printf("DEBUG ------------------ setTagArrayXXX() - %-15s   %s \n", tag.first.c_str(), tag.second.c_str());
+          std::string strTag;
+          strTag  = tag.first;
+          strTag += ",";                           // comma separator between label and value
+          strTag += tag.second;
+          message.addTagsXXX(strTag);               // add a tag to store text - not used by dnsdist at present?
+        }
+
+     printf("DEBUG ------------------ setTagArrayXXX() - end -  \n");
+
+     });
+
+#ifdef TRASH
+  g_lua.writeFunction("setACLXXX", [](boost::variant<string,vector<pair<int, string>>> inp) {
+      setLuaSideEffect();
+      NetmaskGroup nmg;
+      if(auto str = boost::get<string>(&inp)) {
+	nmg.addMask(*str);
+      }
+      else for(const auto& p : boost::get<vector<pair<int,string>>>(inp)) {
+	nmg.addMask(p.second);
+      }
+      g_ACL.setState(nmg);
+  });
+#endif
 
   // --------------------------------------------------------------------------
 

@@ -535,26 +535,34 @@ extern bool g_ECSOverride;
 #include <unordered_map>
 
 
+
 class GcaXXX
 {
+
 public:
 
-GcaXXX(unsigned short uId = 0)
+// ----------------------------------------------------------------------------
+// constructor
+// ----------------------------------------------------------------------------
+GcaXXX()
 {
 
-   uID = ntohs(uId);
 
-   printf("DEBUG ----> GcaXXX() - created   %u <------------------------- \n", uID);
+
+   printf("DEBUG ----> GcaXXX() - constructor   <------------------------- \n");
 }
 
+// ----------------------------------------------------------------------------
+// destructor - verify for debugging that it is called as this is how tags become freed
+// ----------------------------------------------------------------------------
 ~GcaXXX()
 {
-   printf("DEBUG ----> GcaXXX() - deleted   %u <------------------------- \n", uID);
-
-   printf("DEBUG ----> GcaXXX() - do a dump to see what is in there..... \n");
-   dump();
+   printf("DEBUG ----> GcaXXX() - destructor <------------------------- \n");
 }
 
+// ----------------------------------------------------------------------------
+// add() - add a label and value to the tags
+// ----------------------------------------------------------------------------
 bool add(std::string strLabel, std::string strValue)
 {
 bool bStatus = true;
@@ -564,7 +572,10 @@ bool bStatus = true;
    return(bStatus);
 }
 
-std::string get(const std::string& strLabel)  const
+// ----------------------------------------------------------------------------
+// getMatch() - return the matching tag value
+// ----------------------------------------------------------------------------
+std::string getMatch(const std::string& strLabel)  const
 {
 
     std::unordered_map<std::string, std::string>::const_iterator got =tagData.find (strLabel);
@@ -578,32 +589,79 @@ std::string get(const std::string& strLabel)  const
       }
 }
 
-int entries()
+
+// ----------------------------------------------------------------------------
+// getEntry() - return the specified tag entry
+// ----------------------------------------------------------------------------
+std::string getEntry(int iEntry) const
 {
-   return(tagData.bucket_count());
+std::string strEntry;
+int iCounter = 0;
+
+   std::unordered_map<std::string, std::string>::const_iterator itr;
+   for (itr =tagData.begin(); itr != tagData.end(); itr++)
+      {
+        iCounter++;
+        if(iCounter == iEntry)
+          {
+           strEntry = itr->first;
+           strEntry += strSep;
+           strEntry += itr->second;
+           break;
+          }
+      }
+   return(strEntry);
+
 }
 
+// ----------------------------------------------------------------------------
+// count() - return number of tag entries
+// ----------------------------------------------------------------------------
+int count() const
+{
+   return(tagData.size());
+}
+
+// ----------------------------------------------------------------------------
+// dump() - dump out all the elements to the terminal screen
+// ----------------------------------------------------------------------------
 void dump()
 {
-   printf("DEBUG ----> GcaXXX() - DEBUG ID: %u <------------------------- \n", uID);
 
    std::unordered_map<std::string, std::string>::iterator itr;
-    cout << "\nAll Elements: \n";
+    cout << "\nAll Tag Query Elements: \n";
     for (itr =tagData.begin(); itr != tagData.end(); itr++)
        {
-        printf("   %s - %s \n", itr->first.c_str(), itr->second.c_str());
+        printf("   Label: %s   Tag: %s \n", itr->first.c_str(), itr->second.c_str());
        }
 
     printf("\n");
-
-
 }
+
+// ----------------------------------------------------------------------------
+// dumpString() - return string with all the tag entries
+// ----------------------------------------------------------------------------
+std::string dumpString() const
+{
+std::string strRet;
+
+    std::unordered_map<std::string, std::string>::const_iterator itr;
+    for (itr =tagData.begin(); itr != tagData.end(); itr++)
+       {
+        strRet += itr->first;
+        strRet += strSep;
+        strRet += itr->second;
+        strRet += "\n";
+       }
+    return(strRet);
+}
+
+public:
+    std::unordered_map<std::string, std::string>tagData;    // try this public....
 
 private:
 
-    unsigned short uID;
-    std::unordered_map<std::string, std::string>tagData;
-
+    const char *strSep = "\t";                      // separation character
 };
 
 // ----------------------------------------------------------------------------

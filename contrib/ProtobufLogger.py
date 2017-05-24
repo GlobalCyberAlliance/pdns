@@ -127,7 +127,7 @@ class PDNSPBConnHandler(object):
 
             tagsstr = ''
             if response.tags:
-                tagsstr = ', Tags: ' + ','.join(response.tags)
+               tagsstr = ', Tags: ' + ','.join(response.tags)
 
             rrscount = len(response.rrs)
 
@@ -135,6 +135,8 @@ class PDNSPBConnHandler(object):
                                                       rrscount,
                                                       policystr,
                                                       tagsstr))
+ 
+
 
             for rr in response.rrs:
                 rrclass = 1
@@ -155,6 +157,26 @@ class PDNSPBConnHandler(object):
                                                    rr.name,
                                                    rr.ttl,
                                                    rdatastr))
+
+ ## Seth - GCA - parse tags - 5/24/2017
+
+            if response.tags:                         
+               indexval = 0
+               print("##        LABEL              VALUE")
+               print("--   ---------------   -----------------")
+               for i in range(len(response.tags)):     
+                  strPairs = response.tags[indexval].split(",", 1)
+                  strLabel = ""
+                  strValue = ""
+                  if (len(strPairs) > 0):
+                     strLabel = strPairs[0]
+                  if (len(strPairs) > 1):
+                     strValue = strPairs[1]
+                  print("%2d   %-15s   %s" % (indexval, strLabel, strValue))
+                  indexval += 1
+
+
+
 
     def printSummary(self, msg, typestr):
         datestr = datetime.datetime.fromtimestamp(msg.timeSec).strftime('%Y-%m-%d %H:%M:%S')
