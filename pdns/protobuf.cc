@@ -102,7 +102,7 @@ void DNSProtoBufMessage::setEDNSSubnet(const Netmask& subnet, uint8_t mask)
 
 
 
-void DNSProtoBufMessage::addTagsXXX(const std::string& strName)
+void DNSProtoBufMessage::addTagsXXX(const std::string& strLabel, const std::string& strValue)
 {
 #ifdef HAVE_PROTOBUF
 
@@ -110,7 +110,12 @@ void DNSProtoBufMessage::addTagsXXX(const std::string& strName)
   if (!response)
     return;
 
-  response->add_tags(strName);
+  std::string strTag;
+  strTag  = strLabel;
+  strTag += ",";                           // comma separator between label and value
+  strTag += strValue;
+
+  response->add_tags(strTag);
 
 #endif /* HAVE_PROTOBUF */
 }
@@ -159,7 +164,7 @@ void DNSProtoBufMessage::addRRsXXX(const std::string& strName)
 
 void DNSProtoBufMessage::addRRsFromPacket(const char* packet, const size_t len, bool includeCNAME)
 {
-    printf("DEBUG - addRRsFromPacket() ------ start \n");   // debug
+//    printf("DEBUG - addRRsFromPacket() ------ start \n");   // debug
 
 
 #ifdef HAVE_PROTOBUF
@@ -219,6 +224,7 @@ void DNSProtoBufMessage::addRRsFromPacket(const char* packet, const size_t len, 
 // Seth - debugging - 5/11/2017
 // ----------------------------------------------------------------------------
 
+#ifdef TRASH
     printf("DEBUG - addRRsFromPacket() \n");
     printf("\t rrname..: %s \n", rrname.toString().c_str());
     printf("\t type....: %d \n", ah.d_type);
@@ -234,7 +240,9 @@ void DNSProtoBufMessage::addRRsFromPacket(const char* packet, const size_t len, 
           printf(".");
         printf("%d", *cPtr++);
        }
-    printf("\t ---- \n");
+    printf("\t ---- \n"); 
+#endif
+
 // ----------------------------------------------------------------------------
 
       PBDNSMessage_DNSResponse_DNSRR* rr = response->add_rrs();

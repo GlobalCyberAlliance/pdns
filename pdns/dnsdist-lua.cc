@@ -1613,19 +1613,21 @@ vector<std::function<void(void)>> setupLua(bool client, const std::string& confi
 
      g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(vector<pair<string, string>>)>("setTagArrayXXX", [](DNSDistProtoBufMessage& message, const vector<pair<string, string>>&tags) {
 
-     printf("DEBUG ------------------ setTagArrayXXX() - start -  \n");
+//     printf("DEBUG ------------------ setTagArrayXXX() - start -  \n");
 
      for (const auto& tag : tags)
         {
-         printf("DEBUG ------------------ setTagArrayXXX() - %-15s   %s \n", tag.first.c_str(), tag.second.c_str());
+//         printf("DEBUG ------------------ setTagArrayXXX() - %-15s   %s \n", tag.first.c_str(), tag.second.c_str());
+#ifdef TRASH
           std::string strTag;
           strTag  = tag.first;
           strTag += ",";                           // comma separator between label and value
           strTag += tag.second;
-          message.addTagsXXX(strTag);               // add a tag to store text - not used by dnsdist at present?
+#endif
+          message.addTagsXXX(tag.first, tag.second);               // add a tag to store text - not used by dnsdist at present?
         }
 
-     printf("DEBUG ------------------ setTagArrayXXX() - end -  \n");
+//     printf("DEBUG ------------------ setTagArrayXXX() - end -  \n");
 
      });
 

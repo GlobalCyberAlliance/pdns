@@ -65,7 +65,6 @@ class PDNSPBConnHandler(object):
             thread_safe_counter.increment()		# increment total count
             print('------>   Total: %d   Query: %d   Resp: %d   OutQuery: %d   InResp: %d ' % (thread_safe_counter.value(), query_counter.value(), resp_counter.value(), out_query_counter.value(), in_resp_counter.value()))
 
-
             if msg.type == dnsmessage_pb2.PBDNSMessage.DNSQueryType:
                 self.printQueryMessage(msg)
             elif msg.type == dnsmessage_pb2.PBDNSMessage.DNSResponseType:

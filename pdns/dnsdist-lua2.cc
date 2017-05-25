@@ -797,11 +797,11 @@ void moreLua(bool client)
         message.setAppliedPolicyXXX(strAppliedPolicy);          // use appliedpolicy to store text - not used by dnsdist at present?
       });
 
-    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&)>("addTagsXXX", [](DNSDistProtoBufMessage& message, const std::string& strTag) {
-        message.addTagsXXX(strTag);                             // add a tag to store text - not used by dnsdist at present?
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&, const std::string&)>("addTagsXXX", [](DNSDistProtoBufMessage& message, const std::string& strLabel, const std::string& strValue) {
+        message.addTagsXXX(strLabel, strValue);                             // add a tag to store text - not used by dnsdist at present?
       });
 
-    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&, const std::string&)>("setProtobufResponseTypeXXX", [](DNSDistProtoBufMessage& message, const std::string& strQueryName, const std::string& strTag) {
+    g_lua.registerFunction<void(DNSDistProtoBufMessage::*)(const std::string&)>("setProtobufResponseTypeXXX", [](DNSDistProtoBufMessage& message, const std::string& strQueryName) {
         message.setType(DNSProtoBufMessage::Response);          // set protobuf type to be response - not query
 
         struct timespec ts;                                     // set protobuf query time - lua can't do microsec
@@ -810,7 +810,6 @@ void moreLua(bool client)
 
         message.addRRsXXX(strQueryName);                        // add a RR to the response
 
-        message.addTagsXXX(strTag);                             // add a tag to store text - not used by dnsdist at present?
 
 //        message.setAppliedPolicyXXX(strAppliedPolicy);          // use appliedpolicy to store text - not used by dnsdist at present? - not true - apparently used by powerdns
       });
