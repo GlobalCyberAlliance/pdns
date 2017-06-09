@@ -221,6 +221,10 @@ struct DNSComboWriter {
   LuaContext::LuaObject d_data;
 };
 
+MT_t* getMT()
+{
+  return MT ? MT.get() : nullptr;
+}
 
 ArgvMap &arg()
 {

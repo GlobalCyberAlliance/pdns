@@ -596,19 +596,22 @@ static string* pleaseGetCurrentQueries()
 {
   ostringstream ostr;
 
-  ostr << MT->d_waiters.size() <<" currently outstanding questions\n";
+  ostr << getMT()->d_waiters.size() <<" currently outstanding questions\n";
 
   boost::format fmt("%1% %|40t|%2% %|47t|%3% %|63t|%4% %|68t|%5%\n");
 
   ostr << (fmt % "qname" % "qtype" % "remote" % "tcp" % "chained");
-  int n=0;
-  for(MT_t::waiters_t::iterator mthread=MT->d_waiters.begin(); mthread!=MT->d_waiters.end() && n < 100; ++mthread, ++n) {
-    const PacketID& pident = mthread->key;
+  unsigned int n=0;
+  for(const auto& mthread : getMT()->d_waiters) {
+    const PacketID& pident = mthread.key;
     ostr << (fmt 
              % pident.domain.toLogString() /* ?? */ % DNSRecordContent::NumberToType(pident.type) 
              % pident.remote.toString() % (pident.sock ? 'Y' : 'n')
              % (pident.fd == -1 ? 'Y' : 'n')
              );
+    ++n;
+    if (n >= 100)
+      break;
   }
   ostr <<" - done\n";
   return new string(ostr.str());
@@ -662,7 +665,7 @@ uint64_t getNsSpeedsSize()
 
 uint64_t* pleaseGetConcurrentQueries()
 {
-  return new uint64_t(MT ? MT->numProcesses() : 0);
+  return new uint64_t(getMT() ? getMT()->numProcesses() : 0);
 }
 
 static uint64_t getConcurrentQueries()
