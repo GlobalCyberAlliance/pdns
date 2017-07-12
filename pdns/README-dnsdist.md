@@ -1576,6 +1576,8 @@ instantiate a server with additional parameters
         * member `ecsOverride`: whether an existing ECS value should be overridden (settable)
         * member `ecsPrefixLength`: the ECS prefix length to use (settable)
         * member `getDO()`: return true if the DNSSEC OK (DO) bit is set
+        * member `getTag(label)`: Read matching value string given label string from the DNSQuestion object
+        * member `getTagArray()`: Read a table of label/value pairs of strings from the DNSQuestion object
         * member `len`: the question length
         * member `localaddr`: ComboAddress of the local bind this question was received on
         * member `opcode`: the question opcode
@@ -1585,6 +1587,8 @@ instantiate a server with additional parameters
         * member `remoteaddr`: ComboAddress of the remote client
         * member `rcode`: RCode of this question
         * member `sendTrap([reason])`: send a trap containing the description of the query, and the optional `reason` string
+        * member `setTag(label, value)`: store label/value pair of strings to the DNSQuestion object
+        * member `setTagArray(lblValList)`: store a table consisting of label/value pairs of strings to the DNSQuestion object
         * member `size`: the total size of the buffer starting at `dh`
         * member `skipCache`: whether to skip cache lookup / storing the answer for this question (settable)
         * member `tcp`: whether this question was received over a TCP socket
@@ -1646,8 +1650,10 @@ instantiate a server with additional parameters
     * member `unblock(ComboAddress)`: unblock this address
     * member `unblockQName(DNSName [, qtype=255])`: remove this qname from the block list
  * DNSDistProtoBufMessage related:
+    * member `addResponseRR(strQueryName, type, class, ttl, strBlob)`: add a response RR to the protobuf response type message.
     * member `setBytes(bytes)`: set the size of the query
     * member `setEDNSSubnet(Netmask)`: set the EDNS Subnet
+    * member `setProtobufResponseType([sec, uSec])`: change the protobuf message type from a 'query' to 'response', optionally set query time in seconds and fractional micro-seconds
     * member `setQueryTime(sec, usec)`: in a response message, set the time at which the query has been received
     * member `setQuestion(DNSName, qtype, qclass)`: set the question
     * member `setRequestor(ComboAddress)`: set the requestor
@@ -1655,6 +1661,8 @@ instantiate a server with additional parameters
     * member `setResponder(ComboAddress)`: set the responder
     * member `setResponderFromString(string)`: set the responder
     * member `setResponseCode(rcode)`: set the response code
+    * member `setTag(value)`: store a string value in the protobuf tags field
+    * member `setTags(valueList)`: store a table consisting of strings in the protobuf tags field    
     * member `setTime(sec, usec)`: set the time at which the query or response has been received
     * member `toDebugString()`: return an string containing the content of the message
  * DynBPFFilter related:
