@@ -22,12 +22,13 @@
 #include "dnsdist.hh"
 #include "dolog.hh"
 #include "dnsparser.hh"
-//#include "dnsdist-lrucache.hh"
 #include "dnsdist-cache.hh"
 
 // ----------------------------------------------------------------------------
 // Seth - GCA - named cache - 8/2/2017
 // ----------------------------------------------------------------------------
+
+#ifdef TRASH
 DNSDistNamedCacheResult::DNSDistNamedCacheResult(const bool bFoundIt, const string strDataValue)
 {
    printf("DEBUG DEBUG DEBUG - DNSDistNamedCacheResult() - creating object ZZZZZZZZZZZZZZZZZZZZZZZZZ \n");
@@ -49,6 +50,8 @@ string DNSDistNamedCacheResult::data() const
 {
     return(this->strData);
 }
+
+#endif
 
 // ----------------------------------------------------------------------------
 DNSDistNamedCache::DNSDistNamedCache(const string& fileName, size_t maxEntries, int debug)
@@ -83,7 +86,7 @@ DNSDistNamedCache::~DNSDistNamedCache()
 
 int DNSDistNamedCache::lookup(const string& strQuery, string& strData)
 {
-    int iLoc = lrucache.getCDBCache(strQuery, strData);
+    int iLoc = lrucache.getCache(strQuery, strData);
     switch(iLoc)
       {
        case LOC::CACHE:

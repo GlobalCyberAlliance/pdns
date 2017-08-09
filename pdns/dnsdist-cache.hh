@@ -67,7 +67,7 @@ private:
   int iDebug;
   std::string strFileName;
   size_t uMaxEntries;
-  LRUCache2 lrucache;
+  LRUCache lrucache;
   bool bOpened;
   std::atomic<uint64_t> cache_hits{0};
   std::atomic<uint64_t> cdb_hits{0};

@@ -16,6 +16,26 @@ enum LOC {NONE, CDB, CACHE};
 
 
 // ----------------------------------------------------------------------------
+class CdbMapCache {
+
+public:
+   CdbMapCache();
+   ~CdbMapCache();
+   int  loadCdbMap(std::string strCdbName, int iDebug=0);
+   int  getCacheSize();
+   int  getCdbEntries();
+   int  getCache(const std::string strKey, std::string &strValue);
+private:
+   int  iEntriesRead;
+   std::map<string, string> mapKeyData;
+   void uint32_unpack(char s[4],uint32_t *u);
+   int  getNum(int fd, uint32_t &u32Num);
+   int  getText(int fd, unsigned int uBytes, std::string &strData);
+   bool get(std::string key, std::string &strData);
+};
+
+
+// ----------------------------------------------------------------------------
 class Node {
   public:
   std::string key, value;
@@ -89,22 +109,17 @@ class DoublyLinkedList {
 
 
 
-class LRUCache2 {
+class LRUCache {
 
 public:
 
-LRUCache2();
-
-~LRUCache2();
-
-bool init(int capacity);
-void put(std::string key, std::string value);
-bool get(std::string key, std::string &val);
-int  getCacheSize();
-bool openCDB(std::string strFileName);
-bool closeCDB();
-bool getCDB(std::string strKey, std::string &strValue);
-int  getCDBCache(const std::string strKey, std::string &strValue);
+  LRUCache();
+  ~LRUCache();
+  bool init(int capacity);
+  int  getCacheSize();
+  bool openCDB(std::string strFileName);
+  bool closeCDB();
+  int  getCache(const std::string strKey, std::string &strValue);
 
 
 private:
@@ -114,6 +129,28 @@ private:
   map<std::string, Node*> pageMap;
   int fd;                               // cdb file descriptor
   struct cdb cdbX;                      // cdb file info
+
+void put(std::string key, std::string value);
+bool get(std::string key, std::string &val);
+bool getCDB(std::string strKey, std::string &strValue);
+
+};
+
+
+class NamedCache {
+
+public:
+
+  NamedCache();
+  ~NamedCache();
+  bool setSize(int iEntries);
+  int  getSize();
+  int  getEntries();
+  bool setMode(int iMode);
+  std::string errMsg();
+  bool open(std::string strFileName);
+  bool close();
+  bool get(std::string strKey, std::string &strValue);
 
 };
 
