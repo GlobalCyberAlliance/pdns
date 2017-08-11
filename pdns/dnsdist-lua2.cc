@@ -871,6 +871,50 @@ void moreLua(bool client)
     });
 
 // ----------------------------------------------------------------------------
+// lookupQuestTag() 0 use DNSQuestion & addTag to store search results in QTag automatically
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<int(DNSDistNamedCache::*)(DNSQuestion *dq)>("lookupQuestTag", [](DNSDistNamedCache& nc, DNSQuestion *dq) {
+
+//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTag() \n");
+
+
+    std::string strQuery = toLower(dq->qname->toString());
+
+    if(strQuery.back() == '.') {
+//      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTag() - query: %s    REMOVING LAST PERIOD\n", strQuery.c_str());
+      strQuery.pop_back();
+      }
+
+//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTag() - query: %s \n", strQuery.c_str());
+
+    std::string strRet;
+    std::string strHit;
+    int iGotIt = nc.lookup(strQuery, strRet);
+    switch(iGotIt) {
+        case LOC::CDB:
+                strHit = "cdb";
+                break;
+        case LOC::CACHE:
+                strHit = "cache";
+                break;
+        default:
+                strHit = "";
+                break;
+        }
+
+    if(dq->qTag == nullptr) {
+      dq->qTag = std::make_shared<QTag>();
+    }
+
+   dq->qTag->add("data", strRet);
+   dq->qTag->add("found", strHit);
+
+
+   return iGotIt;
+   });
+
+// ----------------------------------------------------------------------------
     g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("debug", [](const std::shared_ptr<DNSDistNamedCache> nc) {
         if (nc) {
           printf("DNSDistNamedCache::debug() \n");
