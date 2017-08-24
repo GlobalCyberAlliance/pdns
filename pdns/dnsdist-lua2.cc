@@ -718,13 +718,23 @@ void moreLua(bool client)
 // Seth - GCA - named cache - 8/2/2017
 // ----------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------
+// newNamedCache - maximum entries as parameter, return named cache object
+// ----------------------------------------------------------------------------
+
     g_lua.writeFunction("newNamedCache", [client](const string& fileName, size_t maxEntries) {
 //    printf("DEBUG DEBUG DEBUG -newNamedCache() \n");
 
-    return std::make_shared<DNSDistNamedCache>(fileName, maxEntries);
+//    return std::make_shared<DNSDistNamedCache>(fileName, maxEntries);
+
+    return std::make_shared<DNSDistNamedCache>(fileName, CACHE_TYPE::TYPE_LRU, maxEntries, true);      // need to pass the cache type from lua
+
     });
 
 // ----------------------------------------------------------------------------
+// getMaxEntries - return max entries for named cache
+// ----------------------------------------------------------------------------
+
     g_lua.registerFunction<uint64_t(std::shared_ptr<DNSDistNamedCache>::*)()>("getMaxEntries", [](const std::shared_ptr<DNSDistNamedCache> nc) {
         if (nc) {
           return(nc->getMaxEntries());
@@ -734,6 +744,9 @@ void moreLua(bool client)
       });
 
 // ----------------------------------------------------------------------------
+// getFileName - return file name used for named cache
+// ----------------------------------------------------------------------------
+
     g_lua.registerFunction<std::string(std::shared_ptr<DNSDistNamedCache>::*)()>("getFileName", [](const std::shared_ptr<DNSDistNamedCache> nc) {
         if (nc) {
           return(nc->getFileName());
@@ -744,7 +757,9 @@ void moreLua(bool client)
       });
 
 // ----------------------------------------------------------------------------
-//    g_lua.registerFunction<std::string(std::shared_ptr<DNSDistNamedCache>::*)(std::string)>("lookup", [](const std::shared_ptr<DNSDistNamedCache> nc, const std::string& strQuery) {
+// lookup - string as parameter, return string with contents of cdb, else empty string
+// ----------------------------------------------------------------------------
+
     g_lua.registerFunction<std::string(DNSDistNamedCache::*)(std::string)>("lookup", [](DNSDistNamedCache& nc, const std::string& strQuery) {
 
 //    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() \n");
@@ -752,7 +767,8 @@ void moreLua(bool client)
 
     std::string strRet;
     int iLoc = nc.lookup(strQuery, strRet);
-    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
+//    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
+    if((iLoc == CACHE_HIT::HIT_CDB) || (iLoc == CACHE_HIT::HIT_CACHE))
       {
 //       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() - found match with %s \n", strMatch.c_str());
 //       strRet = "DUDE - got a match!";
@@ -767,8 +783,9 @@ void moreLua(bool client)
     });
 
 // ----------------------------------------------------------------------------
-//   g_lua.registerMember<const DNSName (DNSQuestion::*)>("qname", [](const DNSQuestion& dq) -> const DNSName { return *dq.qname; }, [](DNSQuestion& dq, const DNSName newName) { (void) newName; });
-//    g_lua.registerFunction<std::string(DNSDistNamedCache::*)(const DNSQuestion& dq)>("lookupQuest", [](DNSDistNamedCache& nc, const DNSQuestion& dq) {
+// lookupDQ - DNSName as parameter, return string with contents of cdb, else empty string
+// ----------------------------------------------------------------------------
+
     g_lua.registerFunction<std::string(DNSDistNamedCache::*)(const DNSName& qn)>("lookupDQ", [](DNSDistNamedCache& nc, const DNSName& qn) {
 
 //    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupDQ() \n");
@@ -783,7 +800,8 @@ void moreLua(bool client)
 
     std::string strRet;
     int iLoc = nc.lookup(strQuery, strRet);
-    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
+//    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
+    if((iLoc == CACHE_HIT::HIT_CDB) || (iLoc == CACHE_HIT::HIT_CACHE))
       {
 //       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() - found match with %s \n", strMatch.c_str());
 //       strRet = "DUDE - got a match!";
@@ -798,6 +816,8 @@ void moreLua(bool client)
     });
 
 
+// ----------------------------------------------------------------------------
+// lookupTableDQ - DNSName as parameter return lua table with found & data entries
 // ----------------------------------------------------------------------------
     g_lua.registerFunction<std::unordered_map<string, string>(DNSDistNamedCache::*)(const DNSName& qn)>("lookupTableDQ", [](DNSDistNamedCache& nc, const DNSName& qn) {
 
@@ -817,10 +837,10 @@ void moreLua(bool client)
     std::string strHit;
     int iLoc = nc.lookup(strQuery, strRet);
     switch(iLoc) {
-        case LOC::CDB:
+        case CACHE_HIT::HIT_CDB:
                 strHit = "cdb";
                 break;
-        case LOC::CACHE:
+        case CACHE_HIT::HIT_CACHE:
                 strHit = "cache";
                 break;
         default:
@@ -839,7 +859,8 @@ void moreLua(bool client)
 
 
 // ----------------------------------------------------------------------------
-
+// lookupQuest - DNSQuestion parameter - return string if found, empty if not
+// ----------------------------------------------------------------------------
 
     g_lua.registerFunction<std::string(DNSDistNamedCache::*)(DNSQuestion *dq)>("lookupQuest", [](DNSDistNamedCache& nc, DNSQuestion *dq) {
 
@@ -856,7 +877,8 @@ void moreLua(bool client)
 
     std::string strRet;
     int iLoc = nc.lookup(strQuery, strRet);
-    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
+//    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
+    if((iLoc == CACHE_HIT::HIT_CDB) || (iLoc == CACHE_HIT::HIT_CACHE))
       {
 //       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuest() - found match with %s \n", strMatch.c_str());
 //       strRet = "DUDE - got a match!";
@@ -871,7 +893,14 @@ void moreLua(bool client)
     });
 
 // ----------------------------------------------------------------------------
-// lookupQuestTag() 0 use DNSQuestion & addTag to store search results in QTag automatically
+// lookupQuestTag()  use DNSQuestion & addTag to store search results in QTag automatically
+//                  return integer with found status
+//                      LOC::NONE  - 0
+//                      LOC::CDB   - 1
+//                      LOC::CACHE - 2
+//                  fields:
+//                      found - same as return status
+//                      data - string from cdb table
 // ----------------------------------------------------------------------------
 
     g_lua.registerFunction<int(DNSDistNamedCache::*)(DNSQuestion *dq)>("lookupQuestTag", [](DNSDistNamedCache& nc, DNSQuestion *dq) {
@@ -892,10 +921,10 @@ void moreLua(bool client)
     std::string strHit;
     int iGotIt = nc.lookup(strQuery, strRet);
     switch(iGotIt) {
-        case LOC::CDB:
+        case CACHE_HIT::HIT_CDB:
                 strHit = "cdb";
                 break;
-        case LOC::CACHE:
+        case CACHE_HIT::HIT_CACHE:
                 strHit = "cache";
                 break;
         default:
@@ -915,6 +944,9 @@ void moreLua(bool client)
    });
 
 // ----------------------------------------------------------------------------
+// debug
+// ----------------------------------------------------------------------------
+
     g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("debug", [](const std::shared_ptr<DNSDistNamedCache> nc) {
         if (nc) {
           printf("DNSDistNamedCache::debug() \n");
@@ -930,45 +962,6 @@ void moreLua(bool client)
           printf("DNSDistNamedCache::debug() - pointer is null! \n");
         }
       });
-
-
-#ifdef TRASH
-
-    g_lua.registerFunction<std::shared_ptr <DNSDistNamedCacheResult>(DNSDistNamedCache::*)(std::string)>("lookupx", [](const DNSDistNamedCache& nc, const std::string& strQuery) {
-    bool bFound = false;
-    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupx() \n");
-    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupx() - query: %s \n", strQuery.c_str());
-
-    std::string strMatch = "1jw2mr4fmky.net";
-    std::string strRet;
-    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupx() - checking for match with: %s \n", strMatch.c_str());
-    if(strQuery.compare(strMatch) == 0)
-      {
-       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupx() - found match with %s \n", strMatch.c_str());
-       strRet = "DUDE - got a match!";
-       bFound = true;
-      }
-    else
-      {
-       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupx() NO match \n");
-       strRet = "";
-      }
-    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupx() - returning with %s \n", strRet.c_str());
-//    DNSDistNamedCacheResult ncr(bFound, strRet);
-    return std::make_shared<DNSDistNamedCacheResult> (bFound, strRet);
-    });
-
-    g_lua.registerFunction<bool(DNSDistNamedCacheResult::*)()>("found", [](const DNSDistNamedCacheResult& ncr) {
-    return ncr.found();
-    });
-
-    g_lua.registerFunction<string(DNSDistNamedCacheResult::*)()>("data", [](const DNSDistNamedCacheResult& ncr) {
-    return ncr.data();
-    });
-
-
-#endif
-
 
 // ----------------------------------------------------------------------------
 

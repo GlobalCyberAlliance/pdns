@@ -21,7 +21,7 @@
  */
 #pragma once
 
-#include "dnsdist-lrucache.hh"
+//#include "dnsdist-lrucache.hh"
 
 #include <atomic>
 #include <unordered_map>
@@ -34,20 +34,9 @@ struct DNSQuestion;
 // Seth - GCA - named cache - 8/2/2017
 // ----------------------------------------------------------------------------
 
+#include "dnsdist-namedcache.hh"
 
-
-class DNSDistNamedCacheResult
-{
-public:
-   DNSDistNamedCacheResult(bool bFoundIt, string strDataValue);
-   ~DNSDistNamedCacheResult();
-   bool found()  const ;
-   string data() const ;
-private:
-   bool bFound;
-   string strData;
-
-};
+#ifdef TRASH
 
 class DNSDistNamedCache : boost::noncopyable
 {
@@ -73,6 +62,8 @@ private:
   std::atomic<uint64_t> cdb_hits{0};
   std::atomic<uint64_t> cache_miss{0};
 };
+
+#endif
 
 // ----------------------------------------------------------------------------
 

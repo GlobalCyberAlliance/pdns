@@ -29,30 +29,6 @@
 // ----------------------------------------------------------------------------
 
 #ifdef TRASH
-DNSDistNamedCacheResult::DNSDistNamedCacheResult(const bool bFoundIt, const string strDataValue)
-{
-   printf("DEBUG DEBUG DEBUG - DNSDistNamedCacheResult() - creating object ZZZZZZZZZZZZZZZZZZZZZZZZZ \n");
-    bFound = bFoundIt;
-    strData = strDataValue;
-}
-
-DNSDistNamedCacheResult::~DNSDistNamedCacheResult()
-{
-    printf("DEBUG DEBUG DEBUG - ~DNSDistNamedCacheResult() - object DESTROYED ZZZZZZZZZZZZZZZZZZZZZZZZZ \n");
-}
-
-bool DNSDistNamedCacheResult::found() const
-{
-    return(this->bFound);
-}
-
-string DNSDistNamedCacheResult::data() const
-{
-    return(this->strData);
-}
-
-#endif
-
 // ----------------------------------------------------------------------------
 DNSDistNamedCache::DNSDistNamedCache(const string& fileName, size_t maxEntries, int debug)
 {
@@ -138,6 +114,8 @@ bool DNSDistNamedCache::isFileOpen()
 {
     return(bOpened);
 }
+
+#endif
 
 // ----------------------------------------------------------------------------
 

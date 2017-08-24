@@ -118,6 +118,7 @@ public:
     return strRet;
   }
 
+
   std::unordered_map<std::string, std::string>tagData;
 
 private:
@@ -154,6 +155,14 @@ struct DNSResponse : DNSQuestion
 
   const struct timespec* queryTime;
 };
+
+// ----------------------------------------------------------------------------
+// Seth - GCA - copy qTag data into response object from question - 8/23/2017
+// ----------------------------------------------------------------------------
+
+extern int copyQTag(DNSResponse &dr, const std::shared_ptr<QTag> qTagData);
+
+// ----------------------------------------------------------------------------
 
 /* so what could you do: 
    drop, 

@@ -330,6 +330,31 @@ bool fixUpResponse(char** response, uint16_t* responseLen, size_t* responseSize,
   return true;
 }
 
+// ----------------------------------------------------------------------------
+// Seth - GCA - copy qTag data into response object from question - 8/23/2017
+// ----------------------------------------------------------------------------
+int copyQTag(DNSResponse &dr, const std::shared_ptr<QTag> qTagData)
+  {
+  int iCount = 0;
+
+  if(qTagData != nullptr) {
+    if(dr.qTag == nullptr) {
+      dr.qTag = std::make_shared<QTag>();
+      }
+
+  if(dr.qTag != nullptr) {
+    for (const auto& itr : qTagData->tagData) {
+      dr.qTag->add(itr.first, itr.second);
+      iCount++;
+      }
+    }
+  }
+  return(iCount);
+}
+
+// ----------------------------------------------------------------------------
+
+
 #ifdef HAVE_DNSCRYPT
 bool encryptResponse(char* response, uint16_t* responseLen, size_t responseSize, bool tcp, std::shared_ptr<DnsCryptQuery> dnsCryptQuery, dnsheader** dh, dnsheader* dhCopy)
 {
@@ -357,6 +382,7 @@ bool encryptResponse(char* response, uint16_t* responseLen, size_t responseSize,
 
 static bool sendUDPResponse(int origFD, char* response, uint16_t responseLen, int delayMsec, const ComboAddress& origDest, const ComboAddress& origRemote)
 {
+
   if(delayMsec && g_delay) {
     DelayedPacket dp{origFD, string(response,responseLen), origRemote, origDest};
     g_delay->submit(dp, delayMsec);
@@ -437,12 +463,15 @@ try {
 
       uint16_t addRoom = 0;
       DNSResponse dr(&ids->qname, ids->qtype, ids->qclass, &ids->origDest, &ids->origRemote, dh, sizeof(packet), responseLen, false, &ids->sentTime.d_start);
+      printf("DEBUG DEBUG DEBUG - GCA - SETH - created a DNSResponse object ............................ dnsdist.cc - line 430   -- BUT QTAG IS NULL!!!!!! \n");
+
 #ifdef HAVE_PROTOBUF
       dr.uniqueId = ids->uniqueId;
 #endif
       if (!processResponse(localRespRulactions, dr, &ids->delayMsec)) {
         continue;
       }
+
 
 #ifdef HAVE_DNSCRYPT
       if (ids->dnsCryptQuery) {
@@ -858,7 +887,6 @@ bool processQuery(LocalStateHolder<NetmaskTree<DynBlock> >& localDynNMGBlock,
     WriteLock wl(&g_rings.queryLock);
     g_rings.queryRing.push_back({now,*dq.remote,*dq.qname,dq.len,dq.qtype,*dq.dh});
   }
-
   if(g_qcount.enabled) {
     string qname = (*dq.qname).toString(".");
     bool countQuery{true};
@@ -1156,6 +1184,7 @@ try
       unsigned int consumed = 0;
       DNSName qname(query, len, sizeof(dnsheader), false, &qtype, &qclass, &consumed);
       DNSQuestion dq(&qname, qtype, qclass, dest.sin4.sin_family != 0 ? &dest : &cs->local, &remote, dh, sizeof(packet), len, false);
+
 #ifdef HAVE_PROTOBUF
       dq.uniqueId = uuidGenerator();
 #endif
@@ -1220,6 +1249,33 @@ try
         uint32_t allowExpired = ss ? 0 : g_staleCacheEntriesTTL;
         if (packetCache->get(dq, consumed, dh->id, cachedResponse, &cachedResponseSize, &cacheKey, allowExpired)) {
           DNSResponse dr(dq.qname, dq.qtype, dq.qclass, dq.local, dq.remote, (dnsheader*) cachedResponse, sizeof cachedResponse, cachedResponseSize, false, &realTime);
+
+// ----------------------------------------------------------------------------
+// Seth - GCA - copy qTag data into response object from question - 8/23/2017
+//              allows normal cache hit to pass qTag data
+//              however still problems with normal non cache as the
+//              response object is created differently up above on line 430
+//              it does not have access to the question object directly.
+// ----------------------------------------------------------------------------
+
+          printf("DEBUG DEBUG DEBUG - GCA - SETH - created a DNSResponse object ............................ dnsdist.cc - line 1214\n");
+          copyQTag(dr, dq.qTag);
+ #ifdef TRASH
+          if(dr.qTag == nullptr) {
+            dr.qTag = std::make_shared<QTag>();
+           }
+         if(dq.qTag != nullptr) {
+           for (const auto& itr : dq.qTag->tagData) {
+             dr.qTag->add(itr.first, itr.second);
+             }
+           }
+         printf("DEBUG DEBUG DEBUG - GCA - SETH - added tag object ............................  dq entries: %lu  dr entries: %lu    dnsdist.cc - line 1214 \n", dq.qTag->count(), dr.qTag->count());
+         for(unsigned int ii=1; ii <= dr.qTag->count(); ii++) {
+            printf("DEBUG DEBUG DEBUG - GCA - SETH - dr object %u: %s \n", ii, dr.qTag->getEntry(ii).c_str());         // dump qTag out on screen
+            }
+#endif
+// ----------------------------------------------------------------------------
+
 #ifdef HAVE_PROTOBUF
           dr.uniqueId = dq.uniqueId;
 #endif
