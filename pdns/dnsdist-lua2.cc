@@ -717,18 +717,78 @@ void moreLua(bool client)
 // ----------------------------------------------------------------------------
 // Seth - GCA - named cache - 8/2/2017
 // ----------------------------------------------------------------------------
-
+// new lua functions - 8/28/2017
+//      newNamedCache(strCacheType, strCacheMode, fileName, maxEntries)
+//      reset() - reset to nocache object
+//      init(strCacheType, strCacheMode, fileName, maxEntries) - (re)initialize
+//      getMaxEntries() - get max entries allowed in cache
+//      getFileName() - get cdb file name used
+//      lookup(strQuery)  - return string of cdb matching entry, else empty string
+//      lookupDQ(DNSName) -  return string with contents of cdb, else empty string
+//      lookupTableDQ(DNSName) - return lua table with found & data entries
+//      lookupQuest(DNSQuestion) - return string of cdb matching entry, else empty string
+//      lookupQuestTag(DNSQuestion) - store search results in QTag parameter of DNSQuestion
+//                  return integer with found status
+//                      LOC::NONE  - 0 (match not found)
+//                      LOC::CDB   - 1 (match found in cdb file)
+//                      LOC::CACHE - 2 (match found in cache)
+//                  DNSQuestion QTag fields:
+//                      found - text return status
+//                              0 length - match not found
+//                              "cdb"    - match found in cdb file
+//                              "cache"  - match found in cache
+//                      data - string from cdb table match, 0 length if no match
+//      debug()    - directly print out statistics
+//      getStats() - get statistics in a table
+//
+// ----------------------------------------------------------------------------
+// lua commands to implement:
+//      setMaxEntries - change the max entries available to the cache
+//      flush()    - clear the cache
+//      loadFile() - load a new cdb
 // ----------------------------------------------------------------------------
 // newNamedCache - maximum entries as parameter, return named cache object
 // ----------------------------------------------------------------------------
 
-    g_lua.writeFunction("newNamedCache", [client](const string& fileName, size_t maxEntries) {
+    g_lua.writeFunction("newNamedCache", [client](const string& strCacheType, const string& strCacheMode, const string& fileName, size_t maxEntries) {
 //    printf("DEBUG DEBUG DEBUG -newNamedCache() \n");
 
 //    return std::make_shared<DNSDistNamedCache>(fileName, maxEntries);
+    shared_ptr <DNSDistNamedCache> xptr = std::make_shared<DNSDistNamedCache>(fileName, strCacheType, strCacheMode ,maxEntries, true);
+    printf("\tObject Count ------> %lu \n", xptr.use_count());
+    return(xptr);
 
-    return std::make_shared<DNSDistNamedCache>(fileName, CACHE_TYPE::TYPE_LRU, maxEntries, true);      // need to pass the cache type from lua
+//    return std::make_shared<DNSDistNamedCache>(fileName, strCacheType, strCacheMode ,maxEntries, true);      // need to pass the cache type from lua
 
+    });
+
+// ----------------------------------------------------------------------------
+// reset
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("reset", []( std::shared_ptr<DNSDistNamedCache> nc) {
+        if (nc) {
+            printf("DNSDistNamedCache::reset() \n");
+            nc->reset();
+            } else {
+              printf("DNSDistNamedCache::reset() - null ptr \n");
+              }
+
+      });
+
+// ----------------------------------------------------------------------------
+// init - (re)initialize a new cache
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<bool(std::shared_ptr<DNSDistNamedCache>::*)(const string&, const string&, const string&, size_t)>("init", []( std::shared_ptr<DNSDistNamedCache> nc, const string& strCacheType, const string& strCacheMode, const string& fileName, size_t maxEntries) {
+        bool bStat = false;
+        if (nc) {
+            printf("DNSDistNamedCache::init() \n");
+            bStat = nc->init(fileName, strCacheType, strCacheMode ,maxEntries, true);
+            } else {
+              printf("DNSDistNamedCache::init() - null ptr \n");
+              }
+        return(bStat);
     });
 
 // ----------------------------------------------------------------------------
@@ -895,12 +955,15 @@ void moreLua(bool client)
 // ----------------------------------------------------------------------------
 // lookupQuestTag()  use DNSQuestion & addTag to store search results in QTag automatically
 //                  return integer with found status
-//                      LOC::NONE  - 0
-//                      LOC::CDB   - 1
-//                      LOC::CACHE - 2
-//                  fields:
-//                      found - same as return status
-//                      data - string from cdb table
+//                      LOC::NONE  - 0 (match not found)
+//                      LOC::CDB   - 1 (match found in cdb file)
+//                      LOC::CACHE - 2 (match found in cache)
+//                  DNSQuestion QTag fields:
+//                      found - text return status
+//                              0 length - match not found
+//                              "cdb"    - match found in cdb file
+//                              "cache"  - match found in cache
+//                      data - string from cdb table match, 0 length if no match
 // ----------------------------------------------------------------------------
 
     g_lua.registerFunction<int(DNSDistNamedCache::*)(DNSQuestion *dq)>("lookupQuestTag", [](DNSDistNamedCache& nc, DNSQuestion *dq) {
@@ -950,6 +1013,9 @@ void moreLua(bool client)
     g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("debug", [](const std::shared_ptr<DNSDistNamedCache> nc) {
         if (nc) {
           printf("DNSDistNamedCache::debug() \n");
+          printf("\tCache Type....: %s \n", nc->getCacheTypeText().c_str());
+          printf("\tCache Mode....: %s \n", nc->getCacheModeText().c_str());
+          printf("\tObject Count..: %lu \n", nc.use_count());
           std::string strTemp = nc->isFileOpen()?"Yes":"No";
           printf("\tCDB File......: %s \n", nc->getFileName().c_str());
           printf("\tFile Opened...: %s \n", strTemp.c_str());
@@ -958,11 +1024,38 @@ void moreLua(bool client)
           printf("\tCache Hits....: %lu \n", nc->getCacheHits());
           printf("\tCDB Hits......: %lu \n", nc->getCdbHits());
           printf("\tCache Miss....: %lu \n", nc->getCacheMiss());
+          printf("\tObject Count..: %lu \n", nc.use_count());
         } else {
           printf("DNSDistNamedCache::debug() - pointer is null! \n");
         }
       });
 
+// ----------------------------------------------------------------------------
+// getStats() - return statistics in a table
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<std::unordered_map<string, string>(std::shared_ptr<DNSDistNamedCache>::*)()>("getStats", [](const std::shared_ptr<DNSDistNamedCache> nc) {
+        std::unordered_map<string, string> tableResult;
+        if (nc) {
+         tableResult.insert({"file", nc->getFileName()});   // file used
+         std::string strTemp = nc->isFileOpen()?"Yes":"No";
+         tableResult.insert({"open", strTemp});             // file open
+         tableResult.insert({"maxEntries", std::to_string(nc->getMaxEntries())});
+         tableResult.insert({"cacheEntries", std::to_string(nc->getCacheEntries())});
+         tableResult.insert({"cacheHits", std::to_string(nc->getCacheHits())});
+         tableResult.insert({"cdbHits", std::to_string(nc->getCdbHits())});
+         tableResult.insert({"cacheMiss", std::to_string(nc->getCacheMiss())});
+         tableResult.insert({"objCount", std::to_string(nc.use_count())});
+         tableResult.insert({"cacheMode", nc->getCacheModeText()});
+         tableResult.insert({"cacheType", nc->getCacheTypeText()});
+        }
+
+      return tableResult;
+      });
+
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
     g_lua.writeFunction("showPools", []() {

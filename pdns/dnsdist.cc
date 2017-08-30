@@ -463,7 +463,7 @@ try {
 
       uint16_t addRoom = 0;
       DNSResponse dr(&ids->qname, ids->qtype, ids->qclass, &ids->origDest, &ids->origRemote, dh, sizeof(packet), responseLen, false, &ids->sentTime.d_start);
-      printf("DEBUG DEBUG DEBUG - GCA - SETH - created a DNSResponse object ............................ dnsdist.cc - line 430   -- BUT QTAG IS NULL!!!!!! \n");
+//      printf("DEBUG DEBUG DEBUG - GCA - SETH - created a DNSResponse object ............................ dnsdist.cc - line 456   -- BUT QTAG IS NULL!!!!!!  very hard to implement passing via QTag 8/29/2017\n");
 
 #ifdef HAVE_PROTOBUF
       dr.uniqueId = ids->uniqueId;

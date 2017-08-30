@@ -2,10 +2,12 @@
 #define NAMEDCACHE_H
 
 #include <string>
+#include "misc.hh"
+
 
 enum CACHE_HIT {HIT_NONE, HIT_CDB, HIT_CACHE};
 enum CACHE_MODE {MODE_NONE, MODE_RPZ, MODE_ALL};
-enum CACHE_TYPE {TYPE_NONE, TYPE_MAP, TYPE_LRU};
+enum CACHE_TYPE {TYPE_NONE, TYPE_CDB, TYPE_MAP, TYPE_LRU};
 
 class NamedCache {
 
@@ -26,6 +28,9 @@ public:
   static  std::string getFoundText(int iStat);
   static  std::string getCacheModeText(int iMode);
   static  std::string getCacheTypeText(int iType);
+  static  int parseCacheModeText(const std::string& strCacheType);
+  static  int parseCacheTypeText(const std::string& strCacheType);
+
 };
 
 #endif // NAMEDCACHE_H

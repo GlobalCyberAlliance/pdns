@@ -39,7 +39,7 @@ std::string strFound;
      switch(iMode)
        {
         case CACHE_MODE::MODE_NONE:
-                strFound = "Nothing";
+                strFound = "None";
                 break;
         case CACHE_MODE::MODE_RPZ:
                 strFound = "RPZ";
@@ -54,6 +54,29 @@ std::string strFound;
     return(strFound);
 }
 
+// ----------------------------------------------------------------------------
+int NamedCache::parseCacheModeText(const std::string& strCacheMode)
+{
+int iMode = CACHE_MODE::MODE_NONE;
+std::string strTemp;
+
+    strTemp = toLower(strCacheMode);
+    if(strTemp == "none")
+      {
+       iMode = CACHE_MODE::MODE_NONE;
+      }
+    if(strTemp == "rpz")
+      {
+       iMode = CACHE_MODE::MODE_RPZ;
+      }
+    if(strTemp == "all")
+      {
+       iMode = CACHE_MODE::MODE_ALL;
+      }
+
+    return(iMode);
+}
+
 std::string NamedCache::getCacheTypeText(int iType)
 {
 std::string strFound;
@@ -61,7 +84,10 @@ std::string strFound;
      switch(iType)
        {
         case CACHE_TYPE::TYPE_NONE:
-                strFound = "Nothing";
+                strFound = "None";
+                break;
+        case CACHE_TYPE::TYPE_CDB:
+                strFound = "CDB";
                 break;
         case CACHE_TYPE::TYPE_LRU:
                 strFound = "LRU";
@@ -75,3 +101,31 @@ std::string strFound;
        }
     return(strFound);
 }
+
+// ----------------------------------------------------------------------------
+int NamedCache::parseCacheTypeText(const std::string& strCacheType)
+{
+int iType = CACHE_TYPE::TYPE_NONE;
+std::string strTemp;
+
+    strTemp = toLower(strCacheType);
+    if(strTemp == "none")
+      {
+       iType = CACHE_TYPE::TYPE_NONE;
+      }
+    if(strTemp == "cdb")
+      {
+       iType = CACHE_TYPE::TYPE_CDB;
+      }
+    if(strTemp == "lru")
+      {
+       iType = CACHE_TYPE::TYPE_LRU;
+      }
+    if(strTemp == "map")
+      {
+       iType = CACHE_TYPE::TYPE_MAP;
+      }
+
+    return(iType);
+}
+
