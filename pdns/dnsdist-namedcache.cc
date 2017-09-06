@@ -9,6 +9,7 @@
 // ----------------------------------------------------------------------------
 DNSDistNamedCache::DNSDistNamedCache(const std::string& fileName, const std::string& strReqType, const std::string& strReqMode, size_t maxEntries, int debug)
 {
+   nc = nullptr;
 
    init(fileName, strReqType, strReqMode, maxEntries, debug);
 #ifdef TRASH
@@ -88,6 +89,9 @@ bool bStat = true;
    strFileName = "";
    uMaxEntries = 0;
    bOpened = false;
+   tCreation = time(NULL);
+
+   resetCounters();
 
    if(nc != nullptr) {
      if(iDebug > 0) {
@@ -170,10 +174,18 @@ int DNSDistNamedCache::lookup(const std::string& strQuery, std::string& strData)
     switch(iLoc)
       {
        case CACHE_HIT::HIT_CACHE:
-            cache_hits++;
+            if(strData.empty()) {
+              cache_hits_no_data++;
+              } else {
+                cache_hits++;
+                }
             break;
        case CACHE_HIT::HIT_CDB:
-            cdb_hits++;
+            if(strData.empty()) {
+              cdb_hits_no_data++;
+              } else {
+                cdb_hits++;
+                }
             break;
        case CACHE_HIT::HIT_NONE:
             cache_miss++;
@@ -217,6 +229,14 @@ uint64_t DNSDistNamedCache::getCacheHits()
 }
 
 // ----------------------------------------------------------------------------
+// getCacheHitsNoData() - get current number of cache hits, with no data (ie. not rpz)
+// ----------------------------------------------------------------------------
+uint64_t DNSDistNamedCache::getCacheHitsNoData()
+{
+    return(cache_hits_no_data);
+}
+
+// ----------------------------------------------------------------------------
 // getCdbHits() - get current number of cdb hits
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getCdbHits()
@@ -225,11 +245,32 @@ uint64_t DNSDistNamedCache::getCdbHits()
 }
 
 // ----------------------------------------------------------------------------
+// getCdbHitsNoData() - get current number of cdb hits, with no data (ie. not rpz)
+// ----------------------------------------------------------------------------
+uint64_t DNSDistNamedCache::getCdbHitsNoData()
+{
+    return(cdb_hits_no_data);
+}
+
+// ----------------------------------------------------------------------------
 // getCacheMiss() - get current number of cache misses
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getCacheMiss()
 {
     return(cache_miss);
+}
+
+// ----------------------------------------------------------------------------
+// resetCounts() - reset the counters
+// ----------------------------------------------------------------------------
+void DNSDistNamedCache::resetCounters()
+{
+    cache_hits = 0;
+    cache_hits_no_data = 0;
+    cdb_hits = 0;
+    cdb_hits_no_data = 0;
+    cache_miss = 0;
+    tCounterReset = time(NULL);
 }
 
 // ----------------------------------------------------------------------------
@@ -250,6 +291,18 @@ std::string  DNSDistNamedCache::getCacheTypeText()
 std::string  DNSDistNamedCache::getCacheModeText()
 {
     return(NamedCache::getCacheModeText(iCacheMode));
+}
+
+// ----------------------------------------------------------------------------
+time_t DNSDistNamedCache::getCreationTime()
+{
+    return(tCreation);
+}
+
+// ----------------------------------------------------------------------------
+time_t DNSDistNamedCache::getCounterResetTime()
+{
+    return(tCounterReset);
 }
 
 // ----------------------------------------------------------------------------

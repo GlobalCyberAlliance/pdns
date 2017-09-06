@@ -741,6 +741,10 @@ void moreLua(bool client)
 //      debug()    - directly print out statistics
 //      getStats() - get statistics in a table
 //
+//      showNamedCaches() - display list of named caches on terminal
+//      getNamedCache() - get named cache ptr, create if not exist
+//      addNamedCache() - create a named cache if it doesn't exist
+//      swapNamedCache() - swap the named caches.
 // ----------------------------------------------------------------------------
 // lua commands to implement:
 //      setMaxEntries - change the max entries available to the cache
@@ -1007,24 +1011,94 @@ void moreLua(bool client)
    });
 
 // ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<int(std::shared_ptr<NamedCacheX>::*)(DNSQuestion *dq)>("lookupQuestTagX", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion *dq) {
+    int iGotIt = 0;
+        if (pool->namedCache) {
+          std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
+
+//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTagX() \n");
+
+
+    std::string strQuery = toLower(dq->qname->toString());
+
+    if(strQuery.back() == '.') {
+//      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTagX() - query: %s    REMOVING LAST PERIOD\n", strQuery.c_str());
+      strQuery.pop_back();
+      }
+
+//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTagX() - query: %s \n", strQuery.c_str());
+
+    std::string strRet;
+    std::string strHit;
+    iGotIt = nc->lookup(strQuery, strRet);
+    switch(iGotIt) {
+        case CACHE_HIT::HIT_CDB:
+                strHit = "cdb";
+                break;
+        case CACHE_HIT::HIT_CACHE:
+                strHit = "cache";
+                break;
+        default:
+                strHit = "";
+                break;
+        }
+
+    if(dq->qTag == nullptr) {
+      dq->qTag = std::make_shared<QTag>();
+    }
+
+   dq->qTag->add("data", strRet);
+   dq->qTag->add("found", strHit);
+
+    }
+   return iGotIt;
+   });
+// ----------------------------------------------------------------------------
+// resetCounters()
+// ----------------------------------------------------------------------------
+    g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("resetCounters", [](const std::shared_ptr<DNSDistNamedCache> nc) {
+        if (nc) {
+          nc->resetCounters();
+          }
+      });
+
+// ----------------------------------------------------------------------------
 // debug
 // ----------------------------------------------------------------------------
 
     g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("debug", [](const std::shared_ptr<DNSDistNamedCache> nc) {
         if (nc) {
           printf("DNSDistNamedCache::debug() \n");
-          printf("\tCache Type....: %s \n", nc->getCacheTypeText().c_str());
-          printf("\tCache Mode....: %s \n", nc->getCacheModeText().c_str());
-          printf("\tObject Count..: %lu \n", nc.use_count());
+          printf("\tCache Type........: %s \n", nc->getCacheTypeText().c_str());
+          printf("\tCache Mode........: %s \n", nc->getCacheModeText().c_str());
+
+          time_t tTemp = nc->getCreationTime();
+          struct tm* tm = localtime(&tTemp);
+          char cTimeBuffer[30];
+          strftime(cTimeBuffer, sizeof(cTimeBuffer), "%F %T %z", tm);
+          cTimeBuffer[sizeof(cTimeBuffer)-1] = '\0';
+
+          printf("\tCreation Time.....: %s \n", cTimeBuffer);
+          printf("\tObject Count......: %lu \n", nc.use_count());
           std::string strTemp = nc->isFileOpen()?"Yes":"No";
-          printf("\tCDB File......: %s \n", nc->getFileName().c_str());
-          printf("\tFile Opened...: %s \n", strTemp.c_str());
-          printf("\tMax Entries...: %lu \n", nc->getMaxEntries());
-          printf("\tIn Use Entries: %lu \n", nc->getCacheEntries());
-          printf("\tCache Hits....: %lu \n", nc->getCacheHits());
-          printf("\tCDB Hits......: %lu \n", nc->getCdbHits());
-          printf("\tCache Miss....: %lu \n", nc->getCacheMiss());
-          printf("\tObject Count..: %lu \n", nc.use_count());
+          printf("\tCDB File..........: %s \n", nc->getFileName().c_str());
+          printf("\tFile Opened.......: %s \n", strTemp.c_str());
+          printf("\tMax Entries.......: %lu \n", nc->getMaxEntries());
+          printf("\tIn Use Entries....: %lu \n", nc->getCacheEntries());
+
+          tTemp = nc->getCounterResetTime();
+          tm = localtime(&tTemp);
+          strftime(cTimeBuffer, sizeof(cTimeBuffer), "%F %T %z", tm);
+          cTimeBuffer[sizeof(cTimeBuffer)-1] = '\0';
+
+          printf("\tCounter Reset Time: %s \n", cTimeBuffer);
+          printf("\tCache Hits........: %lu \n", nc->getCacheHits());
+          printf("\tCache Hits No Data: %lu \n", nc->getCacheHitsNoData());
+          printf("\tCDB Hits..........: %lu \n", nc->getCdbHits());
+          printf("\tCDB Hits No Data..: %lu \n", nc->getCdbHitsNoData());
+          printf("\tCache Miss........: %lu \n", nc->getCacheMiss());
+          printf("\tObject Count......: %lu \n", nc.use_count());
         } else {
           printf("DNSDistNamedCache::debug() - pointer is null! \n");
         }
@@ -1043,16 +1117,211 @@ void moreLua(bool client)
          tableResult.insert({"maxEntries", std::to_string(nc->getMaxEntries())});
          tableResult.insert({"cacheEntries", std::to_string(nc->getCacheEntries())});
          tableResult.insert({"cacheHits", std::to_string(nc->getCacheHits())});
+         tableResult.insert({"cacheHitsNoData", std::to_string(nc->getCacheHitsNoData())});
          tableResult.insert({"cdbHits", std::to_string(nc->getCdbHits())});
+         tableResult.insert({"cdbHitsNoData", std::to_string(nc->getCdbHitsNoData())});
          tableResult.insert({"cacheMiss", std::to_string(nc->getCacheMiss())});
          tableResult.insert({"objCount", std::to_string(nc.use_count())});
          tableResult.insert({"cacheMode", nc->getCacheModeText()});
          tableResult.insert({"cacheType", nc->getCacheTypeText()});
+
+         time_t tTemp = nc->getCreationTime();
+         struct tm* tm = localtime(&tTemp);
+         char cTimeBuffer[30];
+         strftime(cTimeBuffer, sizeof(cTimeBuffer), "%F %T %z", tm);
+         cTimeBuffer[sizeof(cTimeBuffer)-1] = '\0';
+         tableResult.insert({"creationTime", cTimeBuffer});
+
+         tTemp = nc->getCounterResetTime();
+         tm = localtime(&tTemp);
+         strftime(cTimeBuffer, sizeof(cTimeBuffer), "%F %T %z", tm);
+         cTimeBuffer[sizeof(cTimeBuffer)-1] = '\0';
+         tableResult.insert({"counterResetTime", cTimeBuffer});
+
         }
 
       return tableResult;
       });
 
+// ----------------------------------------------------------------------------
+// showNamedCaches() - experimental
+// ----------------------------------------------------------------------------
+
+    g_lua.writeFunction("showNamedCaches", []() {
+      setLuaNoSideEffect();
+      try {
+        ostringstream ret;
+        boost::format fmt("%1$8.8s %|5t|%2$4s %|5t|%3$4s %|5t|%4$4s %|5t|%5$8s %|5t|%6$8s %|5t|%7$12s %|5t|%8$12s %|5t|%9$12s %|5t|%10$12s %|5t|%11$12s %|5t|%12%");
+        ret << (fmt % "Name" % "Type" % "Mode" % "Open" % "MaxCache" % "InCache" % "HitsCache" % "NoDataCache" % "CdbHits" % "CdbNoData"% " MissCache" % "FileName" ) << endl;
+        ret << (fmt % "--------" % "----" % "----" % "----" % "--------" % "--------" % "------------" % "------------" % "------------" % "------------" % "------------" % "--------" ) << endl;
+
+        const auto localNamedCaches = g_namedCaches.getCopy();
+        for (const auto& entry : localNamedCaches) {
+          const string& strCacheName = entry.first;                           // get name
+          const std::shared_ptr<NamedCacheX> cacheEntry = entry.second;       // get object - was NamedCacheX
+          string strFileName = cacheEntry->namedCache->getFileName();
+          string strType = cacheEntry->namedCache->getCacheTypeText();
+          string strMode = cacheEntry->namedCache->getCacheModeText();
+          string strFileOpen = cacheEntry->namedCache->isFileOpen()?"Yes":"No";
+          string strMaxEntries = std::to_string(cacheEntry->namedCache->getMaxEntries());
+          string strInCache = std::to_string(cacheEntry->namedCache->getCacheEntries());
+          string strHitsCache = std::to_string(cacheEntry->namedCache->getCacheHits());
+          string strNoDataCache = std::to_string(cacheEntry->namedCache->getCacheHitsNoData());
+          string strCdbHits = std::to_string(cacheEntry->namedCache->getCdbHits());
+          string strCdbHitsNoData = std::to_string(cacheEntry->namedCache->getCdbHitsNoData());
+          string strMissCache = std::to_string(cacheEntry->namedCache->getCacheMiss());
+          ret << (fmt % strCacheName % strType % strMode % strFileOpen % strMaxEntries % strInCache % strHitsCache % strNoDataCache % strCdbHits % strCdbHitsNoData % strMissCache % strFileName) << endl;
+
+        }
+        g_outputBuffer=ret.str();
+      }catch(std::exception& e) { g_outputBuffer=e.what(); throw; }
+    });
+
+
+
+// ----------------------------------------------------------------------------
+// showNamedCaches() - experimental
+// ----------------------------------------------------------------------------
+#ifdef TRASH
+g_lua.writeFunction("showNamedCaches", []() {
+      setLuaNoSideEffect();
+      try {
+        ostringstream ret;
+        boost::format fmt("%1$-20.20s %|25t|%2$20s %|25t|%3$20s %|50t|%4%" );
+        //             1        2         3                4
+        ret << (fmt % "Name" % "Open" % "MaxEntries" % "FileName" ) << endl;
+
+        const auto localNamedCaches = g_namedCaches.getCopy();
+        for (const auto& entry : localNamedCaches) {
+        printf("DEBUG DEBUG DEBUG - showNamedCaches() - start loop \n");
+          const string& name = entry.first;                             // get name
+          const std::shared_ptr<DNSDistNamedCache> nc = entry.second;       // get object - was NamedCacheX
+        printf("DEBUG DEBUG DEBUG - showNamedCaches() - get file name \n");
+          string strFileName = nc->getFileName();
+          string strFileOpen = nc->isFileOpen()?"Yes":"No";
+          string strMaxEntries = std::to_string(nc->getMaxEntries());
+        printf("DEBUG DEBUG DEBUG - showNamedCaches() - output text \n");
+          ret << (fmt % name % strFileOpen % strMaxEntries % strFileName) << endl;
+        }
+        g_outputBuffer=ret.str();
+      }catch(std::exception& e) { g_outputBuffer=e.what(); throw; }
+    });
+#endif
+// ----------------------------------------------------------------------------
+#ifdef TRASH
+    g_lua.writeFunction("getNamedCache", [client](const string& poolName) {
+
+        if (client) {
+            printf("------------------> getNamedCache() - client exists!!!!!!!!!! \n");
+//////          return std::make_shared<DNSDistNamedCache>();
+        }
+
+        auto localPools = g_namedCaches.getCopy();
+        const std::shared_ptr<DNSDistNamedCache> nc = createNamedCacheIfNotExists(localPools, poolName);
+            printf("----->   getNamedCache() --- Object Count ------> %lu \n", nc.use_count());
+
+        g_namedCaches.setState(localPools);
+        return nc;
+      });
+
+
+#endif
+
+// ----------------------------------------------------------------------------
+// getNamedCache() - get ptr to named cache entry in table
+//                   if it doesn't exist, create it.
+// ----------------------------------------------------------------------------
+    g_lua.writeFunction("getNamedCache", [client](const string& cacheName) {
+        if (client) {
+          printf("--------------> getNamedCache() - client exists!!!!! \n");
+          return std::make_shared<NamedCacheX>();
+        }
+        auto localPools = g_namedCaches.getCopy();
+        std::shared_ptr<NamedCacheX> cacheEntry = createNamedCacheIfNotExists(localPools, cacheName);
+        g_namedCaches.setState(localPools);
+        return cacheEntry;
+      });
+
+// ----------------------------------------------------------------------------
+// getNamedCacheX() - same as getNamedCache but returns ptr to named cache
+//                    not a desirable method as it ups the object count
+// ----------------------------------------------------------------------------
+    g_lua.writeFunction("getNamedCacheX", [client](const string& poolName) {
+        auto localPools = g_namedCaches.getCopy();
+        std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, poolName);
+        g_namedCaches.setState(localPools);
+        return pool->namedCache;
+      });
+
+// ----------------------------------------------------------------------------
+// addNamedCache() - add a named cache, doesn't return pointer
+// ----------------------------------------------------------------------------
+  g_lua.writeFunction("addNamedCache", [](const std::string& cacheName) {
+      setLuaSideEffect();
+      auto localPools = g_namedCaches.getCopy();
+      std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, cacheName);
+      g_namedCaches.setState(localPools);
+    });
+
+// ----------------------------------------------------------------------------
+// swapNamedCache() - swap between two named caches, doesn't return pointer
+// ----------------------------------------------------------------------------
+  g_lua.writeFunction("swapNamedCache", [](const std::string& cacheNameA, const std::string& cacheNameB) {
+      setLuaSideEffect();
+      auto localPools = g_namedCaches.getCopy();
+      std::shared_ptr<NamedCacheX> entryCacheA = createNamedCacheIfNotExists(localPools, cacheNameA);
+      std::shared_ptr<NamedCacheX> entryCacheB = createNamedCacheIfNotExists(localPools, cacheNameB);
+      std::shared_ptr<DNSDistNamedCache> namedCacheTemp = entryCacheA->namedCache;
+      entryCacheA->namedCache = entryCacheB->namedCache;
+      entryCacheB->namedCache = namedCacheTemp;
+      g_namedCaches.setState(localPools);
+    });
+
+// ----------------------------------------------------------------------------
+// debugX
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<void(std::shared_ptr<NamedCacheX>::*)()>("debugX", [](const std::shared_ptr<NamedCacheX> pool) {
+
+        if (pool->namedCache) {
+          std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
+          printf("DNSDistNamedCache::debug() \n");
+          printf("\tCache Type........: %s \n", nc->getCacheTypeText().c_str());
+          printf("\tCache Mode........: %s \n", nc->getCacheModeText().c_str());
+
+          time_t tTemp = nc->getCreationTime();
+          struct tm* tm = localtime(&tTemp);
+          char cTimeBuffer[30];
+          strftime(cTimeBuffer, sizeof(cTimeBuffer), "%F %T %z", tm);
+          cTimeBuffer[sizeof(cTimeBuffer)-1] = '\0';
+
+          printf("\tCreation Time.....: %s \n", cTimeBuffer);
+          printf("\tObject Count......: %lu \n", nc.use_count());
+          std::string strTemp = nc->isFileOpen()?"Yes":"No";
+          printf("\tCDB File..........: %s \n", nc->getFileName().c_str());
+          printf("\tFile Opened.......: %s \n", strTemp.c_str());
+          printf("\tMax Entries.......: %lu \n", nc->getMaxEntries());
+          printf("\tIn Use Entries....: %lu \n", nc->getCacheEntries());
+
+          tTemp = nc->getCounterResetTime();
+          tm = localtime(&tTemp);
+          strftime(cTimeBuffer, sizeof(cTimeBuffer), "%F %T %z", tm);
+          cTimeBuffer[sizeof(cTimeBuffer)-1] = '\0';
+
+          printf("\tCounter Reset Time: %s \n", cTimeBuffer);
+          printf("\tCache Hits........: %lu \n", nc->getCacheHits());
+          printf("\tCache Hits No Data: %lu \n", nc->getCacheHitsNoData());
+          printf("\tCDB Hits..........: %lu \n", nc->getCdbHits());
+          printf("\tCDB Hits No Data..: %lu \n", nc->getCdbHitsNoData());
+          printf("\tCache Miss........: %lu \n", nc->getCacheMiss());
+        } else {
+          printf("DNSDistNamedCache::debug() - pointer is null! \n");
+        }
+      });
+
+
+
+// ----------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------

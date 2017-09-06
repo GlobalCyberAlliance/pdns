@@ -48,7 +48,7 @@ std::string strFound;
                 strFound = "ALL";
                 break;
         default:
-                strFound = "?????";
+                strFound = "????";
                 break;
        }
     return(strFound);
@@ -96,7 +96,7 @@ std::string strFound;
                 strFound = "MAP";
                 break;
         default:
-                strFound = "?????";
+                strFound = "????";
                 break;
        }
     return(strFound);

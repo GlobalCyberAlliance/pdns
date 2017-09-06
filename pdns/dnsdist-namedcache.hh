@@ -52,13 +52,18 @@ public:
   std::string   getFileName();
   uint64_t getCacheEntries();
   uint64_t getCacheHits();
+  uint64_t getCacheHitsNoData();
   uint64_t getCdbHits();
+  uint64_t getCdbHitsNoData();
   uint64_t getCacheMiss();
+  void     resetCounters();
   bool     isFileOpen();
   int      lookup(const std::string& strQuery, std::string& strData);
   bool     reset();
   std::string getCacheTypeText();
   std::string getCacheModeText();
+  time_t getCreationTime();
+  time_t getCounterResetTime();
   static int parseCacheTypeText(const std::string& strCacheType);
   static int parseCacheModeText(const std::string& strCacheMode);
 
@@ -73,8 +78,12 @@ private:
   NamedCache *nc;
   bool bOpened;
   std::atomic<uint64_t> cache_hits{0};
+  std::atomic<uint64_t> cache_hits_no_data{0};
   std::atomic<uint64_t> cdb_hits{0};
+  std::atomic<uint64_t> cdb_hits_no_data{0};
   std::atomic<uint64_t> cache_miss{0};
+  time_t tCreation;
+  time_t tCounterReset;
 };
 
 #endif // DNSDISTNAMEDCACHE_H

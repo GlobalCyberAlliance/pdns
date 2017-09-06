@@ -715,6 +715,24 @@ void setPoolPolicy(pools_t& pools, const string& poolName, std::shared_ptr<Serve
 void addServerToPool(pools_t& pools, const string& poolName, std::shared_ptr<DownstreamState> server);
 void removeServerFromPool(pools_t& pools, const string& poolName, std::shared_ptr<DownstreamState> server);
 
+// ----------------------------------------------------------------------------
+// GCA - Seth - NamedCache 8/31/2017
+
+
+struct NamedCacheX
+{
+//  const std::shared_ptr<DNSDistNamedCache> getCache() const { return packetCache; };
+
+  std::shared_ptr<DNSDistNamedCache> namedCache{nullptr};
+};
+
+
+using namedCaches_t=map<std::string, std::shared_ptr<NamedCacheX>>;
+//using namedCaches_t=map<std::string, std::shared_ptr<DNSDistNamedCache>>;
+extern GlobalStateHolder<namedCaches_t> g_namedCaches;
+
+// ----------------------------------------------------------------------------
+
 struct CarbonConfig
 {
   ComboAddress server;
@@ -738,6 +756,15 @@ extern GlobalStateHolder<vector<pair<std::shared_ptr<DNSRule>, std::shared_ptr<D
 extern GlobalStateHolder<vector<pair<std::shared_ptr<DNSRule>, std::shared_ptr<DNSResponseAction> > > > g_resprulactions;
 extern GlobalStateHolder<vector<pair<std::shared_ptr<DNSRule>, std::shared_ptr<DNSResponseAction> > > > g_cachehitresprulactions;
 extern GlobalStateHolder<NetmaskGroup> g_ACL;
+
+// ----------------------------------------------------------------------------
+// GCA - Seth - NamedCache 8/31/2017
+
+extern GlobalStateHolder<namedCaches_t> g_namedCaches;
+
+std::shared_ptr<NamedCacheX> createNamedCacheIfNotExists(namedCaches_t& namedCaches, const string& poolName);
+//const std::shared_ptr<DNSDistNamedCache> createNamedCacheIfNotExists(namedCaches_t& namedCaches, const string& poolName);
+// ----------------------------------------------------------------------------
 
 extern ComboAddress g_serverControl; // not changed during runtime
 

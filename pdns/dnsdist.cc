@@ -89,6 +89,13 @@ std::vector<std::shared_ptr<DynBPFFilter> > g_dynBPFFilters;
 vector<ClientState *> g_frontends;
 GlobalStateHolder<pools_t> g_pools;
 
+// ----------------------------------------------------------------------------
+// GCA - Seth - NamedCache 8/31/2017
+
+GlobalStateHolder<namedCaches_t> g_namedCaches;
+
+// ----------------------------------------------------------------------------
+
 bool g_snmpEnabled{false};
 bool g_snmpTrapsEnabled{false};
 DNSDistSNMPAgent* g_snmpAgent{nullptr};
@@ -352,6 +359,50 @@ int copyQTag(DNSResponse &dr, const std::shared_ptr<QTag> qTagData)
   return(iCount);
 }
 
+// ----------------------------------------------------------------------------
+// createNamedCacheIfNotExists() - experimental
+// ----------------------------------------------------------------------------
+
+std::shared_ptr<NamedCacheX> createNamedCacheIfNotExists(namedCaches_t& namedCaches, const string& poolName)
+{
+  std::shared_ptr<NamedCacheX> pool;
+  namedCaches_t::iterator it = namedCaches.find(poolName);
+  if (it != namedCaches.end()) {
+    pool = it->second;
+  }
+  else {
+    if (!poolName.empty())
+      vinfolog("Creating named cache %s", poolName);
+    pool = std::make_shared<NamedCacheX>();
+
+    pool->namedCache = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, true);
+    namedCaches.insert(std::pair<std::string,std::shared_ptr<NamedCacheX> >(poolName, pool));
+  }
+  return pool;
+}
+
+// ----------------------------------------------------------------------------
+#ifdef TRASH
+const std::shared_ptr<DNSDistNamedCache> createNamedCacheIfNotExists(namedCaches_t& namedCaches, const string& ncName)
+{
+  std::shared_ptr<DNSDistNamedCache> nc;
+  const namedCaches_t::iterator it = namedCaches.find(ncName);
+  if (it != namedCaches.end()) {
+    printf("----------> createNamedCacheIfNotExists() - found entry!   Object Count: %lu \n", it->second.use_count());
+
+    nc = it->second;
+  }
+  else {
+    if (!ncName.empty())
+      vinfolog("Creating named cache %s", ncName);
+    printf("----------> createNamedCacheIfNotExists() - no entry found - create one! \n");
+
+    nc = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, true);
+    namedCaches.insert(std::pair<std::string,std::shared_ptr<DNSDistNamedCache> >(ncName, nc));
+  }
+  return nc;
+}
+#endif
 // ----------------------------------------------------------------------------
 
 
