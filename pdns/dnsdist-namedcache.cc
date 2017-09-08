@@ -12,55 +12,7 @@ DNSDistNamedCache::DNSDistNamedCache(const std::string& fileName, const std::str
    nc = nullptr;
 
    init(fileName, strReqType, strReqMode, maxEntries, debug);
-#ifdef TRASH
-   iDebug = debug;
-   strFileName = fileName;
-   uMaxEntries = maxEntries;
-   bOpened = false;
-   iCacheType = parseCacheTypeText(strReqType);
-   iCacheMode = parseCacheModeText(strReqMode);
-   if(debug > 0) {
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache() - creating object XXXXXXXXXXXXXXXXXXXXXXXXXXXX \n");
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache() - requested cdb file: %s \n", fileName.c_str());
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache() - requested entries.: %lu \n", maxEntries);
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache() - requested Type....: %s \n", NamedCache::getCacheTypeText(iCacheType).c_str());
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache() - requested Mode....: %s \n", NamedCache::getCacheModeText(iCacheMode).c_str());
-   }
-   switch(iCacheType) {
-     case CACHE_TYPE::TYPE_LRU:
-        nc = new LRUCache();
-        break;
-     case CACHE_TYPE::TYPE_MAP:
-        nc = new CdbMapCache();
-        break;
-     case CACHE_TYPE::TYPE_CDB:
-        nc = new CdbNoCache();
-        break;
-     case CACHE_TYPE::TYPE_NONE:
-        nc = new NoCache();
-        break;
-     default:
-        nc = NULL;
-        break;
-     }
 
-  if(nc->init(uMaxEntries, CACHE_MODE::MODE_ALL) == true) {
-    if(iDebug > 0) {
-      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache() - init with max entries: %lu \n", uMaxEntries);
-    }
-    if(nc->open(fileName) == true) {
-      bOpened = true;
-    } else {
-      uMaxEntries = 0;
-      }
-  }
-  if(iDebug > 0) {
-    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache() - cdb file opened: %s    %s \n", bOpened?"YES":"NO", fileName.c_str());
-    if(bOpened == false) {
-      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache() - Error msg: %s \n", nc->getErrMsg().c_str());
-    }
-  }
-#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -173,19 +125,17 @@ int DNSDistNamedCache::lookup(const std::string& strQuery, std::string& strData)
     int iLoc = nc->getCache(strQuery, strData);
     switch(iLoc)
       {
+       case CACHE_HIT::HIT_CDB_NO_DATA:
+            cdb_hits_no_data++;
+            break;
+       case CACHE_HIT::HIT_CACHE_NO_DATA:
+            cache_hits_no_data++;
+            break;
        case CACHE_HIT::HIT_CACHE:
-            if(strData.empty()) {
-              cache_hits_no_data++;
-              } else {
-                cache_hits++;
-                }
+            cache_hits++;
             break;
        case CACHE_HIT::HIT_CDB:
-            if(strData.empty()) {
-              cdb_hits_no_data++;
-              } else {
-                cdb_hits++;
-                }
+            cdb_hits++;
             break;
        case CACHE_HIT::HIT_NONE:
             cache_miss++;

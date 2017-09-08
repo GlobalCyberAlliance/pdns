@@ -733,41 +733,40 @@ void moreLua(bool client)
 //                      LOC::CDB   - 1 (match found in cdb file)
 //                      LOC::CACHE - 2 (match found in cache)
 //                  DNSQuestion QTag fields:
-//                      found - text return status
+//                      nc_found - text return status
 //                              0 length - match not found
 //                              "cdb"    - match found in cdb file
 //                              "cache"  - match found in cache
-//                      data - string from cdb table match, 0 length if no match
-//      debug()    - directly print out statistics
+//                      nc_data - string from cdb table match, 0 length if no match
+//      resetCounters() - reset statistic counters for the named cache
+//      showStats() - directly print out statistics to terminal
 //      getStats() - get statistics in a table
 //
 //      showNamedCaches() - display list of named caches on terminal
 //      getNamedCache() - get named cache ptr, create if not exist
 //      addNamedCache() - create a named cache if it doesn't exist
-//      swapNamedCache() - swap the named caches.
+//      swapNamedCaches() - swap the named caches.
 // ----------------------------------------------------------------------------
-// lua commands to implement:
-//      setMaxEntries - change the max entries available to the cache
-//      flush()    - clear the cache
-//      loadFile() - load a new cdb
+
+
+#ifdef TRASH
 // ----------------------------------------------------------------------------
-// newNamedCache - maximum entries as parameter, return named cache object
+// DNSDistNamedCache methods
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// newNamedCache() - maximum entries as parameter, return named cache object
 // ----------------------------------------------------------------------------
 
     g_lua.writeFunction("newNamedCache", [client](const string& strCacheType, const string& strCacheMode, const string& fileName, size_t maxEntries) {
-//    printf("DEBUG DEBUG DEBUG -newNamedCache() \n");
-
-//    return std::make_shared<DNSDistNamedCache>(fileName, maxEntries);
     shared_ptr <DNSDistNamedCache> xptr = std::make_shared<DNSDistNamedCache>(fileName, strCacheType, strCacheMode ,maxEntries, true);
     printf("\tObject Count ------> %lu \n", xptr.use_count());
     return(xptr);
-
-//    return std::make_shared<DNSDistNamedCache>(fileName, strCacheType, strCacheMode ,maxEntries, true);      // need to pass the cache type from lua
-
     });
 
 // ----------------------------------------------------------------------------
-// reset
+// reset() - reset to nocache object
 // ----------------------------------------------------------------------------
 
     g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("reset", []( std::shared_ptr<DNSDistNamedCache> nc) {
@@ -821,28 +820,29 @@ void moreLua(bool client)
       });
 
 // ----------------------------------------------------------------------------
+// isFileOpen - return true if cdb file is OK
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<bool(std::shared_ptr<DNSDistNamedCache>::*)()>("isFileOpen", [](const std::shared_ptr<DNSDistNamedCache> nc) {
+        if (nc) {
+          return(nc->isFileOpen());
+          } else {
+           return false;
+        }
+      });
+
+// ----------------------------------------------------------------------------
 // lookup - string as parameter, return string with contents of cdb, else empty string
 // ----------------------------------------------------------------------------
 
     g_lua.registerFunction<std::string(DNSDistNamedCache::*)(std::string)>("lookup", [](DNSDistNamedCache& nc, const std::string& strQuery) {
 
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() \n");
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() - query: %s \n", strQuery.c_str());
-
     std::string strRet;
     int iLoc = nc.lookup(strQuery, strRet);
-//    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
-    if((iLoc == CACHE_HIT::HIT_CDB) || (iLoc == CACHE_HIT::HIT_CACHE))
+    if(iLoc == CACHE_HIT::HIT_NONE)
       {
-//       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() - found match with %s \n", strMatch.c_str());
-//       strRet = "DUDE - got a match!";
+       strRet = "";
       }
-    else
-      {
-//       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() NO match \n");
-//       strRet = "";
-      }
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() - returning with %s \n", strRet.c_str());
     return strRet;
     });
 
@@ -852,30 +852,19 @@ void moreLua(bool client)
 
     g_lua.registerFunction<std::string(DNSDistNamedCache::*)(const DNSName& qn)>("lookupDQ", [](DNSDistNamedCache& nc, const DNSName& qn) {
 
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupDQ() \n");
 
     std::string strQuery = toLower(qn.toString());
 
     if(strQuery.back() == '.') {
-//      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupDQ() - query: %s    REMOVING LAST PERIOD\n", strQuery.c_str());
       strQuery.pop_back();
       }
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupDQ() - query: %s \n", strQuery.c_str());
 
     std::string strRet;
     int iLoc = nc.lookup(strQuery, strRet);
-//    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
-    if((iLoc == CACHE_HIT::HIT_CDB) || (iLoc == CACHE_HIT::HIT_CACHE))
+    if(iLoc == CACHE_HIT::HIT_NONE)
       {
-//       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() - found match with %s \n", strMatch.c_str());
-//       strRet = "DUDE - got a match!";
+       strRet = "";
       }
-    else
-      {
-//       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() NO match \n");
-//       strRet = "";
-      }
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookup() - returning with %s \n", strRet.c_str());
     return strRet;
     });
 
@@ -885,8 +874,6 @@ void moreLua(bool client)
 // ----------------------------------------------------------------------------
     g_lua.registerFunction<std::unordered_map<string, string>(DNSDistNamedCache::*)(const DNSName& qn)>("lookupTableDQ", [](DNSDistNamedCache& nc, const DNSName& qn) {
 
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupTableDQ() \n");
-
     std::unordered_map<string, string> tableResult;
 
     std::string strQuery = toLower(qn.toString());
@@ -895,30 +882,15 @@ void moreLua(bool client)
       strQuery.pop_back();
       }
 
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupTableDQ() - query: %s \n", strQuery.c_str());
-
     std::string strRet;
     std::string strHit;
     int iLoc = nc.lookup(strQuery, strRet);
-    switch(iLoc) {
-        case CACHE_HIT::HIT_CDB:
-                strHit = "cdb";
-                break;
-        case CACHE_HIT::HIT_CACHE:
-                strHit = "cache";
-                break;
-        default:
-                strHit = "";
-                break;
-        }
+    strHit = NamedCache::getFoundText(iLoc);
 
-   tableResult.insert({"data", strRet});              // answer
-   tableResult.insert({"found", strHit});             // type of hit
+    tableResult.insert({"nc_data", strRet});            // answer
+    tableResult.insert({"nc_hit", strHit});             // type of hit
 
-
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupTableDQ() - tablesize: %lu \n", tableResult.size());
-
-   return tableResult;
+    return tableResult;
    });
 
 
@@ -928,31 +900,18 @@ void moreLua(bool client)
 
     g_lua.registerFunction<std::string(DNSDistNamedCache::*)(DNSQuestion *dq)>("lookupQuest", [](DNSDistNamedCache& nc, DNSQuestion *dq) {
 
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuest() \n");
-
-
     std::string strQuery = toLower(dq->qname->toString());
 
     if(strQuery.back() == '.') {
-//      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuest() - query: %s    REMOVING LAST PERIOD\n", strQuery.c_str());
       strQuery.pop_back();
       }
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuest() - query: %s \n", strQuery.c_str());
 
     std::string strRet;
     int iLoc = nc.lookup(strQuery, strRet);
-//    if((iLoc == LOC::CDB) || (iLoc == LOC::CACHE))
-    if((iLoc == CACHE_HIT::HIT_CDB) || (iLoc == CACHE_HIT::HIT_CACHE))
+    if(iLoc == CACHE_HIT::HIT_NONE)
       {
-//       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuest() - found match with %s \n", strMatch.c_str());
-//       strRet = "DUDE - got a match!";
+       strRet = "";
       }
-    else
-      {
-//       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuest() NO match \n");
-//       strRet = "";
-      }
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuest() - returning with %s \n", strRet.c_str());
     return strRet;
     });
 
@@ -963,26 +922,20 @@ void moreLua(bool client)
 //                      LOC::CDB   - 1 (match found in cdb file)
 //                      LOC::CACHE - 2 (match found in cache)
 //                  DNSQuestion QTag fields:
-//                      found - text return status
+//                      nc_found - text return status
 //                              0 length - match not found
 //                              "cdb"    - match found in cdb file
 //                              "cache"  - match found in cache
-//                      data - string from cdb table match, 0 length if no match
+//                      nc_data - string from cdb table match, 0 length if no match
 // ----------------------------------------------------------------------------
 
     g_lua.registerFunction<int(DNSDistNamedCache::*)(DNSQuestion *dq)>("lookupQuestTag", [](DNSDistNamedCache& nc, DNSQuestion *dq) {
 
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTag() \n");
-
-
     std::string strQuery = toLower(dq->qname->toString());
 
     if(strQuery.back() == '.') {
-//      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTag() - query: %s    REMOVING LAST PERIOD\n", strQuery.c_str());
       strQuery.pop_back();
       }
-
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTag() - query: %s \n", strQuery.c_str());
 
     std::string strRet;
     std::string strHit;
@@ -1003,60 +956,17 @@ void moreLua(bool client)
       dq->qTag = std::make_shared<QTag>();
     }
 
-   dq->qTag->add("data", strRet);
-   dq->qTag->add("found", strHit);
+   dq->qTag->add("nc_data", strRet);
+   dq->qTag->add("nc_found", strHit);
 
 
    return iGotIt;
    });
 
 // ----------------------------------------------------------------------------
-
-    g_lua.registerFunction<int(std::shared_ptr<NamedCacheX>::*)(DNSQuestion *dq)>("lookupQuestTagX", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion *dq) {
-    int iGotIt = 0;
-        if (pool->namedCache) {
-          std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
-
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTagX() \n");
-
-
-    std::string strQuery = toLower(dq->qname->toString());
-
-    if(strQuery.back() == '.') {
-//      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTagX() - query: %s    REMOVING LAST PERIOD\n", strQuery.c_str());
-      strQuery.pop_back();
-      }
-
-//    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache::lookupQuestTagX() - query: %s \n", strQuery.c_str());
-
-    std::string strRet;
-    std::string strHit;
-    iGotIt = nc->lookup(strQuery, strRet);
-    switch(iGotIt) {
-        case CACHE_HIT::HIT_CDB:
-                strHit = "cdb";
-                break;
-        case CACHE_HIT::HIT_CACHE:
-                strHit = "cache";
-                break;
-        default:
-                strHit = "";
-                break;
-        }
-
-    if(dq->qTag == nullptr) {
-      dq->qTag = std::make_shared<QTag>();
-    }
-
-   dq->qTag->add("data", strRet);
-   dq->qTag->add("found", strHit);
-
-    }
-   return iGotIt;
-   });
+// resetCounters() - reset the counters for the named cache
 // ----------------------------------------------------------------------------
-// resetCounters()
-// ----------------------------------------------------------------------------
+
     g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("resetCounters", [](const std::shared_ptr<DNSDistNamedCache> nc) {
         if (nc) {
           nc->resetCounters();
@@ -1064,10 +974,10 @@ void moreLua(bool client)
       });
 
 // ----------------------------------------------------------------------------
-// debug
+// showStats() - show statistics for a named cache on terminal
 // ----------------------------------------------------------------------------
 
-    g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("debug", [](const std::shared_ptr<DNSDistNamedCache> nc) {
+    g_lua.registerFunction<void(std::shared_ptr<DNSDistNamedCache>::*)()>("showStats", [](const std::shared_ptr<DNSDistNamedCache> nc) {
         if (nc) {
           printf("DNSDistNamedCache::debug() \n");
           printf("\tCache Type........: %s \n", nc->getCacheTypeText().c_str());
@@ -1143,8 +1053,52 @@ void moreLua(bool client)
       return tableResult;
       });
 
+
+
 // ----------------------------------------------------------------------------
-// showNamedCaches() - experimental
+// getNamedCacheX() - same as getNamedCache but returns ptr to named cache
+//                    not a desirable method as it ups the object count
+// ----------------------------------------------------------------------------
+    g_lua.writeFunction("getNamedCacheX", [client](const string& poolName) {
+        auto localPools = g_namedCaches.getCopy();
+        std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, poolName);
+        g_namedCaches.setState(localPools);
+        return pool->namedCache;
+      });
+
+#endif
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// NamedCacheX general methods
+// ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// addNamedCache() - add a named cache, doesn't return pointer
+// ----------------------------------------------------------------------------
+  g_lua.writeFunction("addNamedCache", [](const std::string& cacheName) {
+      setLuaSideEffect();
+      auto localPools = g_namedCaches.getCopy();
+      std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, cacheName);
+      g_namedCaches.setState(localPools);
+    });
+
+// ----------------------------------------------------------------------------
+// swapNamedCaches() - swap between two named caches, doesn't return pointer
+// ----------------------------------------------------------------------------
+  g_lua.writeFunction("swapNamedCaches", [](const std::string& cacheNameA, const std::string& cacheNameB) {
+      setLuaSideEffect();
+      auto localPools = g_namedCaches.getCopy();
+      std::shared_ptr<NamedCacheX> entryCacheA = createNamedCacheIfNotExists(localPools, cacheNameA);
+      std::shared_ptr<NamedCacheX> entryCacheB = createNamedCacheIfNotExists(localPools, cacheNameB);
+      std::shared_ptr<DNSDistNamedCache> namedCacheTemp = entryCacheA->namedCache;
+      entryCacheA->namedCache = entryCacheB->namedCache;
+      entryCacheB->namedCache = namedCacheTemp;
+      g_namedCaches.setState(localPools);
+    });
+
+// ----------------------------------------------------------------------------
+// showNamedCaches() - show all the named caches
 // ----------------------------------------------------------------------------
 
     g_lua.writeFunction("showNamedCaches", []() {
@@ -1177,55 +1131,11 @@ void moreLua(bool client)
       }catch(std::exception& e) { g_outputBuffer=e.what(); throw; }
     });
 
-
-
 // ----------------------------------------------------------------------------
-// showNamedCaches() - experimental
 // ----------------------------------------------------------------------------
-#ifdef TRASH
-g_lua.writeFunction("showNamedCaches", []() {
-      setLuaNoSideEffect();
-      try {
-        ostringstream ret;
-        boost::format fmt("%1$-20.20s %|25t|%2$20s %|25t|%3$20s %|50t|%4%" );
-        //             1        2         3                4
-        ret << (fmt % "Name" % "Open" % "MaxEntries" % "FileName" ) << endl;
-
-        const auto localNamedCaches = g_namedCaches.getCopy();
-        for (const auto& entry : localNamedCaches) {
-        printf("DEBUG DEBUG DEBUG - showNamedCaches() - start loop \n");
-          const string& name = entry.first;                             // get name
-          const std::shared_ptr<DNSDistNamedCache> nc = entry.second;       // get object - was NamedCacheX
-        printf("DEBUG DEBUG DEBUG - showNamedCaches() - get file name \n");
-          string strFileName = nc->getFileName();
-          string strFileOpen = nc->isFileOpen()?"Yes":"No";
-          string strMaxEntries = std::to_string(nc->getMaxEntries());
-        printf("DEBUG DEBUG DEBUG - showNamedCaches() - output text \n");
-          ret << (fmt % name % strFileOpen % strMaxEntries % strFileName) << endl;
-        }
-        g_outputBuffer=ret.str();
-      }catch(std::exception& e) { g_outputBuffer=e.what(); throw; }
-    });
-#endif
+// NamedCacheX methods
 // ----------------------------------------------------------------------------
-#ifdef TRASH
-    g_lua.writeFunction("getNamedCache", [client](const string& poolName) {
-
-        if (client) {
-            printf("------------------> getNamedCache() - client exists!!!!!!!!!! \n");
-//////          return std::make_shared<DNSDistNamedCache>();
-        }
-
-        auto localPools = g_namedCaches.getCopy();
-        const std::shared_ptr<DNSDistNamedCache> nc = createNamedCacheIfNotExists(localPools, poolName);
-            printf("----->   getNamedCache() --- Object Count ------> %lu \n", nc.use_count());
-
-        g_namedCaches.setState(localPools);
-        return nc;
-      });
-
-
-#endif
+// ----------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------
 // getNamedCache() - get ptr to named cache entry in table
@@ -1243,45 +1153,67 @@ g_lua.writeFunction("showNamedCaches", []() {
       });
 
 // ----------------------------------------------------------------------------
-// getNamedCacheX() - same as getNamedCache but returns ptr to named cache
-//                    not a desirable method as it ups the object count
+// init - (re)initialize a new cache
 // ----------------------------------------------------------------------------
-    g_lua.writeFunction("getNamedCacheX", [client](const string& poolName) {
-        auto localPools = g_namedCaches.getCopy();
-        std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, poolName);
-        g_namedCaches.setState(localPools);
-        return pool->namedCache;
-      });
+    g_lua.registerFunction<bool(std::shared_ptr<NamedCacheX>::*)(const string&, const string&, const string&, size_t)>("init", [](const std::shared_ptr<NamedCacheX>pool, const string& strCacheType, const string& strCacheMode, const string& fileName, size_t maxEntries) {
+        bool bStat = false;
+        if (pool->namedCache) {
+          std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
+          if (nc) {
+            printf("DNSDistNamedCache::init() \n");
+            bStat = nc->init(fileName, strCacheType, strCacheMode ,maxEntries, true);
+            } else {
+              printf("DNSDistNamedCache::init() - null ptr \n");
+              }
+        }
+        return(bStat);
+    });
+
 
 // ----------------------------------------------------------------------------
-// addNamedCache() - add a named cache, doesn't return pointer
+// getStats - return statistics in a table
 // ----------------------------------------------------------------------------
-  g_lua.writeFunction("addNamedCache", [](const std::string& cacheName) {
-      setLuaSideEffect();
-      auto localPools = g_namedCaches.getCopy();
-      std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, cacheName);
-      g_namedCaches.setState(localPools);
+    g_lua.registerFunction<std::unordered_map<string, string>(std::shared_ptr<NamedCacheX>::*)()>("getStats", [](const std::shared_ptr<NamedCacheX>pool) {
+        std::unordered_map<string, string> tableResult;
+        if (pool->namedCache) {
+          std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
+          if (nc) {
+            tableResult.insert({"file", nc->getFileName()});   // file used
+            std::string strTemp = nc->isFileOpen()?"Yes":"No";
+            tableResult.insert({"open", strTemp});             // file open
+            tableResult.insert({"maxEntries", std::to_string(nc->getMaxEntries())});
+            tableResult.insert({"cacheEntries", std::to_string(nc->getCacheEntries())});
+            tableResult.insert({"cacheHits", std::to_string(nc->getCacheHits())});
+            tableResult.insert({"cacheHitsNoData", std::to_string(nc->getCacheHitsNoData())});
+            tableResult.insert({"cdbHits", std::to_string(nc->getCdbHits())});
+            tableResult.insert({"cdbHitsNoData", std::to_string(nc->getCdbHitsNoData())});
+            tableResult.insert({"cacheMiss", std::to_string(nc->getCacheMiss())});
+            tableResult.insert({"objCount", std::to_string(nc.use_count())});
+            tableResult.insert({"cacheMode", nc->getCacheModeText()});
+            tableResult.insert({"cacheType", nc->getCacheTypeText()});
+
+            time_t tTemp = nc->getCreationTime();
+            struct tm* tm = localtime(&tTemp);
+            char cTimeBuffer[30];
+            strftime(cTimeBuffer, sizeof(cTimeBuffer), "%F %T %z", tm);
+            cTimeBuffer[sizeof(cTimeBuffer)-1] = '\0';
+            tableResult.insert({"creationTime", cTimeBuffer});
+
+            tTemp = nc->getCounterResetTime();
+            tm = localtime(&tTemp);
+            strftime(cTimeBuffer, sizeof(cTimeBuffer), "%F %T %z", tm);
+            cTimeBuffer[sizeof(cTimeBuffer)-1] = '\0';
+            tableResult.insert({"counterResetTime", cTimeBuffer});
+            }
+        }
+        return(tableResult);
     });
 
 // ----------------------------------------------------------------------------
-// swapNamedCache() - swap between two named caches, doesn't return pointer
-// ----------------------------------------------------------------------------
-  g_lua.writeFunction("swapNamedCache", [](const std::string& cacheNameA, const std::string& cacheNameB) {
-      setLuaSideEffect();
-      auto localPools = g_namedCaches.getCopy();
-      std::shared_ptr<NamedCacheX> entryCacheA = createNamedCacheIfNotExists(localPools, cacheNameA);
-      std::shared_ptr<NamedCacheX> entryCacheB = createNamedCacheIfNotExists(localPools, cacheNameB);
-      std::shared_ptr<DNSDistNamedCache> namedCacheTemp = entryCacheA->namedCache;
-      entryCacheA->namedCache = entryCacheB->namedCache;
-      entryCacheB->namedCache = namedCacheTemp;
-      g_namedCaches.setState(localPools);
-    });
-
-// ----------------------------------------------------------------------------
-// debugX
+// showStats() - show statistics for named cache on terminal
 // ----------------------------------------------------------------------------
 
-    g_lua.registerFunction<void(std::shared_ptr<NamedCacheX>::*)()>("debugX", [](const std::shared_ptr<NamedCacheX> pool) {
+    g_lua.registerFunction<void(std::shared_ptr<NamedCacheX>::*)()>("showStats", [](const std::shared_ptr<NamedCacheX> pool) {
 
         if (pool->namedCache) {
           std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
@@ -1319,9 +1251,84 @@ g_lua.writeFunction("showNamedCaches", []() {
         }
       });
 
+// ----------------------------------------------------------------------------
+// resetCounters() - reset the counters for the named cache
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<void(std::shared_ptr<NamedCacheX>::*)()>("resetCounters", [](const std::shared_ptr<NamedCacheX> pool) {
+        if (pool->namedCache) {
+          std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
+          if (nc) {
+            nc->resetCounters();
+            }
+          }
+      });
+
+// ----------------------------------------------------------------------------
+// isFileOpen - return true if cdb file is OK
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<bool(std::shared_ptr<NamedCacheX>::*)()>("isFileOpen", [](const std::shared_ptr<NamedCacheX>pool) {
+        if (pool->namedCache) {
+          std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
+          if (nc) {
+            return(nc->isFileOpen());
+          }
+        }
+        return false;
+      });
 
 
 // ----------------------------------------------------------------------------
+// lookupQuestTag()  use DNSQuestion & addTag to store search results in QTag automatically
+//                  return integer with found status
+//                      LOC::NONE  - 0 (match not found)
+//                      LOC::CDB   - 1 (match found in cdb file)
+//                      LOC::CACHE - 2 (match found in cache)
+//                  DNSQuestion QTag fields:
+//                      nc_found - text return status
+//                              0 length - match not found
+//                              "cdb"    - match found in cdb file
+//                              "cache"  - match found in cache
+//                      nc_data - string from cdb table match, 0 length if no match
+// ----------------------------------------------------------------------------
+
+    g_lua.registerFunction<int(std::shared_ptr<NamedCacheX>::*)(DNSQuestion *dq)>("lookupQuestTag", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion *dq) {
+    int iGotIt = 0;
+        if (pool->namedCache) {
+          std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
+
+    std::string strQuery = toLower(dq->qname->toString());
+
+    if(strQuery.back() == '.') {
+      strQuery.pop_back();
+      }
+
+    std::string strRet;
+    std::string strHit;
+    iGotIt = nc->lookup(strQuery, strRet);
+    switch(iGotIt) {
+        case CACHE_HIT::HIT_CDB:
+                strHit = "cdb";
+                break;
+        case CACHE_HIT::HIT_CACHE:
+                strHit = "cache";
+                break;
+        default:
+                strHit = "";
+                break;
+        }
+
+    if(dq->qTag == nullptr) {
+      dq->qTag = std::make_shared<QTag>();
+    }
+
+   dq->qTag->add("data", strRet);
+   dq->qTag->add("found", strHit);
+
+    }
+   return iGotIt;
+   });
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------

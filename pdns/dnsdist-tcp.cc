@@ -571,7 +571,6 @@ void* tcpClientThread(int pipefd)
 //              it does not have access to the question object directly.
 // ----------------------------------------------------------------------------
 
-        printf("DEBUG DEBUG DEBUG - GCA - SETH - created a DNSResponse object ............................ dnsdist.cc - line 1214\n");
         copyQTag(dr, dq.qTag);
 // ----------------------------------------------------------------------------
 

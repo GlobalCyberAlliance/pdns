@@ -375,7 +375,7 @@ std::shared_ptr<NamedCacheX> createNamedCacheIfNotExists(namedCaches_t& namedCac
       vinfolog("Creating named cache %s", poolName);
     pool = std::make_shared<NamedCacheX>();
 
-    pool->namedCache = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, true);
+    pool->namedCache = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, false);       // last var is debug switch
     namedCaches.insert(std::pair<std::string,std::shared_ptr<NamedCacheX> >(poolName, pool));
   }
   return pool;
@@ -514,7 +514,6 @@ try {
 
       uint16_t addRoom = 0;
       DNSResponse dr(&ids->qname, ids->qtype, ids->qclass, &ids->origDest, &ids->origRemote, dh, sizeof(packet), responseLen, false, &ids->sentTime.d_start);
-//      printf("DEBUG DEBUG DEBUG - GCA - SETH - created a DNSResponse object ............................ dnsdist.cc - line 456   -- BUT QTAG IS NULL!!!!!!  very hard to implement passing via QTag 8/29/2017\n");
 
 #ifdef HAVE_PROTOBUF
       dr.uniqueId = ids->uniqueId;
@@ -1309,22 +1308,7 @@ try
 //              it does not have access to the question object directly.
 // ----------------------------------------------------------------------------
 
-          printf("DEBUG DEBUG DEBUG - GCA - SETH - created a DNSResponse object ............................ dnsdist.cc - line 1214\n");
           copyQTag(dr, dq.qTag);
- #ifdef TRASH
-          if(dr.qTag == nullptr) {
-            dr.qTag = std::make_shared<QTag>();
-           }
-         if(dq.qTag != nullptr) {
-           for (const auto& itr : dq.qTag->tagData) {
-             dr.qTag->add(itr.first, itr.second);
-             }
-           }
-         printf("DEBUG DEBUG DEBUG - GCA - SETH - added tag object ............................  dq entries: %lu  dr entries: %lu    dnsdist.cc - line 1214 \n", dq.qTag->count(), dr.qTag->count());
-         for(unsigned int ii=1; ii <= dr.qTag->count(); ii++) {
-            printf("DEBUG DEBUG DEBUG - GCA - SETH - dr object %u: %s \n", ii, dr.qTag->getEntry(ii).c_str());         // dump qTag out on screen
-            }
-#endif
 // ----------------------------------------------------------------------------
 
 #ifdef HAVE_PROTOBUF

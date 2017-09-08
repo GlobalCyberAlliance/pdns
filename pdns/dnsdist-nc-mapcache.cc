@@ -325,7 +325,7 @@ int iStatus = CACHE_HIT::HIT_NONE;
     bool bGotCache = get(strKey, strValue);      // read from cache
     if(bGotCache == false)
       {
-       iStatus = CACHE_HIT::HIT_NONE;
+       iStatus = CACHE_HIT::HIT_NONE;       
       }
     else
       {

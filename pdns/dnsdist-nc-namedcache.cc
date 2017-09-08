@@ -16,14 +16,20 @@ std::string strFound;
 
      switch(iStat)
        {
+        case CACHE_HIT::HIT_CACHE_NO_DATA:
+                strFound = "Cache_NoData";
+                break;
+        case CACHE_HIT::HIT_CDB_NO_DATA:
+                strFound = "Cdb_NoData";
+                break;
         case CACHE_HIT::HIT_CACHE:
                 strFound = "Cache";
                 break;
         case CACHE_HIT::HIT_CDB:
-                strFound = "  Cdb";
+                strFound = "Cdb";
                 break;
         case CACHE_HIT::HIT_NONE:
-                strFound = " None";
+                strFound = "None";
                 break;
         default:
                 strFound = "?????";

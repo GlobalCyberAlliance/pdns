@@ -179,7 +179,11 @@ bool bGotCDB;
             {
              put(strKey, strValue);            // store in cache
             }
-          iStatus = CACHE_HIT::HIT_CDB;
+          if(strValue.empty()) {
+            iStatus = CACHE_HIT::HIT_CDB_NO_DATA;
+            } else {
+              iStatus = CACHE_HIT::HIT_CDB;
+              }
          }
        else
          {
@@ -192,7 +196,11 @@ bool bGotCDB;
       }
     else
       {
-       iStatus = CACHE_HIT::HIT_CACHE;
+       if(strValue.empty()) {
+         iStatus = CACHE_HIT::HIT_CACHE_NO_DATA;
+         } else {
+         iStatus = CACHE_HIT::HIT_CACHE;
+         }
       }
 
 
