@@ -1,0 +1,20 @@
+notes-cdb.txt
+Seth Ornstein
+5/15/2017
+
+These scripts were tested with the  Constant DataBase (CDB) tool version 0.78
+
+dumpOne.sh  - find match for 1jw2mr4fmky.net in blocklist.cdb and display
+
+dumpStat.sh - display status for blocklist.cdb
+
+grepOne.sh  - dump the entire blocklist.cdb and grep for matches to 1jw2mr4fmky.net
+
+dumpAll.sh  - dump the entire blocklist.cdb
+
+dumpKeys.sh - dump the keys for the entire blocklist.cdb
+
+blocklist.cdb - tinycdb rpz demo db, created 5/3/2017 by Nick
+
+whitelist.cdb - whitelist (created 5/3/2017 by Nick) used to create blocklist.cdb
+
