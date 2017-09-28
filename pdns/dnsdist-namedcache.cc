@@ -1,28 +1,19 @@
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-
 #include "dnsdist-namedcache.hh"
 
-// ----------------------------------------------------------------------------
-// DNSDistNamedCache() - object creation
-// ----------------------------------------------------------------------------
+
+#ifdef HAVE_NAMEDCACHE
+
 DNSDistNamedCache::DNSDistNamedCache(const std::string& fileName, const std::string& strReqType, const std::string& strReqMode, size_t maxEntries, int debug)
 {
-   nc = nullptr;
-
-   init(fileName, strReqType, strReqMode, maxEntries, debug);
-
+  nc = nullptr;
+  init(fileName, strReqType, strReqMode, maxEntries, debug);
 }
 
-// ----------------------------------------------------------------------------
-// ~DNSDistNamedCache() - object destruction
-// ----------------------------------------------------------------------------
 DNSDistNamedCache::~DNSDistNamedCache()
 {
-   if(iDebug > 0) {
-     printf("DEBUG DEBUG DEBUG - ~DNSDistNamedCache() - object DESTROYED XXXXXXXXXXXXXXXXXXXXXXXXXXXX \n");
-   }
+  if(iDebug > 0) {
+    printf("DEBUG DEBUG DEBUG - ~DNSDistNamedCache() - object DESTROYED XXXXXXXXXXXXXXXXXXXXXXXXXXXX \n");
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -32,30 +23,30 @@ bool DNSDistNamedCache::reset()
 {
 bool bStat = true;
 
-   if(iDebug > 0) {
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::reset() - start \n");
-     }
+  if(iDebug > 0) {
+    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::reset() - start \n");
+  }
 
-   iCacheType = CACHE_TYPE::TYPE_NONE;
-   iCacheMode = CACHE_MODE::MODE_NONE;
-   strFileName = "";
-   uMaxEntries = 0;
-   bOpened = false;
-   tCreation = time(NULL);
+  iCacheType = CACHE_TYPE::TYPE_NONE;
+  iCacheMode = CACHE_MODE::MODE_NONE;
+  strFileName = "";
+  uMaxEntries = 0;
+  bOpened = false;
+  tCreation = time(NULL);
 
-   resetCounters();
+  resetCounters();
 
-   if(nc != nullptr) {
-     if(iDebug > 0) {
-       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::reset() - deleting nc object \n");
-       }
-     delete nc;
-     }
-    nc = new NoCache();
+  if(nc != nullptr) {
     if(iDebug > 0) {
-      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::reset() - finished \n");
+      printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::reset() - deleting nc object \n");
       }
-    return(bStat);
+    delete nc;
+  }
+  nc = new NoCache();
+  if(iDebug > 0) {
+    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::reset() - finished \n");
+  }
+  return(bStat);
 }
 
 // ----------------------------------------------------------------------------
@@ -65,37 +56,40 @@ bool DNSDistNamedCache::init(const std::string& fileName, const std::string& str
 {
 bool bStat = false;
 
-   reset();             // reset existing object
-   iDebug = debug;
-   strFileName = fileName;
-   uMaxEntries = maxEntries;
-   bOpened = false;
-   iCacheType = parseCacheTypeText(strReqType);
-   iCacheMode = parseCacheModeText(strReqMode);
-   if(debug > 0) {
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - creating object XXXXXXXXXXXXXXXXXXXXXXXXXXXX \n");
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - requested cdb file: %s \n", fileName.c_str());
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - requested entries.: %lu \n", maxEntries);
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - requested Type....: %s \n", NamedCache::getCacheTypeText(iCacheType).c_str());
-     printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - requested Mode....: %s \n", NamedCache::getCacheModeText(iCacheMode).c_str());
-   }
-   switch(iCacheType) {
-     case CACHE_TYPE::TYPE_LRU:
+  reset();             // reset existing object
+  iDebug = debug;
+  strFileName = fileName;
+  uMaxEntries = maxEntries;
+  bOpened = false;
+  iCacheType = parseCacheTypeText(strReqType);
+  iCacheMode = parseCacheModeText(strReqMode);
+  if(debug > 0) {
+    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - creating object XXXXXXXXXXXXXXXXXXXXXXXXXXXX \n");
+    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - requested cdb file: %s \n", fileName.c_str());
+    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - requested entries.: %lu \n", maxEntries);
+    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - requested Type....: %s \n", NamedCache::getCacheTypeText(iCacheType).c_str());
+    printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - requested Mode....: %s \n", NamedCache::getCacheModeText(iCacheMode).c_str());
+  }
+  switch(iCacheType) {
+    case CACHE_TYPE::TYPE_LRU2:
+        nc = new LRUCache2();
+        break;
+    case CACHE_TYPE::TYPE_LRU:
         nc = new LRUCache();
         break;
-     case CACHE_TYPE::TYPE_MAP:
+    case CACHE_TYPE::TYPE_MAP:
         nc = new CdbMapCache();
         break;
-     case CACHE_TYPE::TYPE_CDB:
+    case CACHE_TYPE::TYPE_CDB:
         nc = new CdbNoCache();
         break;
-     case CACHE_TYPE::TYPE_NONE:
+    case CACHE_TYPE::TYPE_NONE:
         nc = new NoCache();
         break;
-     default:
+    default:
         nc = NULL;
         break;
-     }
+    }
 
   if(nc->init(uMaxEntries, CACHE_MODE::MODE_ALL) == true) {
     if(iDebug > 0) {
@@ -104,7 +98,7 @@ bool bStat = false;
     if(nc->open(fileName) == true) {
       bOpened = true;
     } else {
-      uMaxEntries = 0;
+        uMaxEntries = 0;
       }
   }
 
@@ -114,7 +108,7 @@ bool bStat = false;
       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache(::init() - Error msg: %s \n", nc->getErrMsg().c_str());
     }
   }
-    return(bStat);
+  return(bStat);
 }
 
 // ----------------------------------------------------------------------------
@@ -122,28 +116,27 @@ bool bStat = false;
 // ----------------------------------------------------------------------------
 int DNSDistNamedCache::lookup(const std::string& strQuery, std::string& strData)
 {
-    int iLoc = nc->getCache(strQuery, strData);
-    switch(iLoc)
-      {
-       case CACHE_HIT::HIT_CDB_NO_DATA:
-            cdb_hits_no_data++;
-            break;
-       case CACHE_HIT::HIT_CACHE_NO_DATA:
-            cache_hits_no_data++;
-            break;
-       case CACHE_HIT::HIT_CACHE:
-            cache_hits++;
-            break;
-       case CACHE_HIT::HIT_CDB:
-            cdb_hits++;
-            break;
-       case CACHE_HIT::HIT_NONE:
-            cache_miss++;
-            break;
-       default:
-            break;
-      }
-    return(iLoc);
+  int iLoc = nc->getCache(strQuery, strData);
+  switch(iLoc) {
+    case CACHE_HIT::HIT_CDB_NO_DATA:
+      cdbHitsNoData++;
+      break;
+    case CACHE_HIT::HIT_CACHE_NO_DATA:
+      cacheHitsNoData++;
+      break;
+    case CACHE_HIT::HIT_CACHE:
+      cacheHits++;
+      break;
+    case CACHE_HIT::HIT_CDB:
+      cdbHits++;
+      break;
+    case CACHE_HIT::HIT_NONE:
+      cacheMiss++;
+      break;
+    default:
+      break;
+  }
+  return(iLoc);
 }
 
 // ----------------------------------------------------------------------------
@@ -151,7 +144,7 @@ int DNSDistNamedCache::lookup(const std::string& strQuery, std::string& strData)
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getMaxEntries()
 {
-   return(uMaxEntries);
+  return(uMaxEntries);
 }
 
 // ----------------------------------------------------------------------------
@@ -159,7 +152,22 @@ uint64_t DNSDistNamedCache::getMaxEntries()
 // ----------------------------------------------------------------------------
 std::string DNSDistNamedCache::getFileName()
 {
-   return(strFileName);
+  return(strFileName);
+}
+
+// ----------------------------------------------------------------------------
+// getErrMsg() - get i/o error number (errno)
+// ----------------------------------------------------------------------------
+int DNSDistNamedCache::getErrNum()
+{
+  return(nc->getErrNum());
+}
+// ----------------------------------------------------------------------------
+// getErrMsg() - get error message text
+// ----------------------------------------------------------------------------
+std::string DNSDistNamedCache::getErrMsg()
+{
+  return(nc->getErrMsg());
 }
 
 // ----------------------------------------------------------------------------
@@ -167,7 +175,7 @@ std::string DNSDistNamedCache::getFileName()
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getCacheEntries()
 {
-    return(nc->getEntries());
+  return(nc->getEntries());
 }
 
 // ----------------------------------------------------------------------------
@@ -175,7 +183,7 @@ uint64_t DNSDistNamedCache::getCacheEntries()
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getCacheHits()
 {
-    return(cache_hits);
+  return(cacheHits);
 }
 
 // ----------------------------------------------------------------------------
@@ -183,7 +191,7 @@ uint64_t DNSDistNamedCache::getCacheHits()
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getCacheHitsNoData()
 {
-    return(cache_hits_no_data);
+  return(cacheHitsNoData);
 }
 
 // ----------------------------------------------------------------------------
@@ -191,7 +199,7 @@ uint64_t DNSDistNamedCache::getCacheHitsNoData()
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getCdbHits()
 {
-    return(cdb_hits);
+  return(cdbHits);
 }
 
 // ----------------------------------------------------------------------------
@@ -199,7 +207,7 @@ uint64_t DNSDistNamedCache::getCdbHits()
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getCdbHitsNoData()
 {
-    return(cdb_hits_no_data);
+  return(cdbHitsNoData);
 }
 
 // ----------------------------------------------------------------------------
@@ -207,7 +215,7 @@ uint64_t DNSDistNamedCache::getCdbHitsNoData()
 // ----------------------------------------------------------------------------
 uint64_t DNSDistNamedCache::getCacheMiss()
 {
-    return(cache_miss);
+  return(cacheMiss);
 }
 
 // ----------------------------------------------------------------------------
@@ -215,12 +223,12 @@ uint64_t DNSDistNamedCache::getCacheMiss()
 // ----------------------------------------------------------------------------
 void DNSDistNamedCache::resetCounters()
 {
-    cache_hits = 0;
-    cache_hits_no_data = 0;
-    cdb_hits = 0;
-    cdb_hits_no_data = 0;
-    cache_miss = 0;
-    tCounterReset = time(NULL);
+  cacheHits = 0;
+  cacheHitsNoData = 0;
+  cdbHits = 0;
+  cdbHitsNoData = 0;
+  cacheMiss = 0;
+  tCounterReset = time(NULL);
 }
 
 // ----------------------------------------------------------------------------
@@ -228,41 +236,37 @@ void DNSDistNamedCache::resetCounters()
 // ----------------------------------------------------------------------------
 bool DNSDistNamedCache::isFileOpen()
 {
-    return(bOpened);
+  return(bOpened);
 }
 
-// ----------------------------------------------------------------------------
 std::string  DNSDistNamedCache::getCacheTypeText()
 {
-    return(NamedCache::getCacheTypeText(iCacheType));
+  return(NamedCache::getCacheTypeText(iCacheType));
 }
 
-// ----------------------------------------------------------------------------
 std::string  DNSDistNamedCache::getCacheModeText()
 {
-    return(NamedCache::getCacheModeText(iCacheMode));
+  return(NamedCache::getCacheModeText(iCacheMode));
 }
 
-// ----------------------------------------------------------------------------
 time_t DNSDistNamedCache::getCreationTime()
 {
-    return(tCreation);
+  return(tCreation);
 }
 
-// ----------------------------------------------------------------------------
 time_t DNSDistNamedCache::getCounterResetTime()
 {
-    return(tCounterReset);
+  return(tCounterReset);
 }
 
-// ----------------------------------------------------------------------------
 int DNSDistNamedCache::parseCacheTypeText(const std::string& strCacheType)
 {
-    return(NamedCache::parseCacheTypeText(strCacheType));
+  return(NamedCache::parseCacheTypeText(strCacheType));
 }
 
-// ----------------------------------------------------------------------------
 int DNSDistNamedCache::parseCacheModeText(const std::string& strCacheMode)
 {
-    return(NamedCache::parseCacheModeText(strCacheMode));
+  return(NamedCache::parseCacheModeText(strCacheMode));
 }
+
+#endif

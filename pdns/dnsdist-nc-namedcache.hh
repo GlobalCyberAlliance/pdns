@@ -2,12 +2,16 @@
 #define NAMEDCACHE_H
 
 #include <string>
+
+#include "config.h"
+
 #include "misc.hh"
 
+#ifdef HAVE_NAMEDCACHE
 
 enum CACHE_HIT {HIT_NONE, HIT_CDB, HIT_CACHE, HIT_CDB_NO_DATA, HIT_CACHE_NO_DATA};
 enum CACHE_MODE {MODE_NONE, MODE_RPZ, MODE_ALL};
-enum CACHE_TYPE {TYPE_NONE, TYPE_CDB, TYPE_MAP, TYPE_LRU};
+enum CACHE_TYPE {TYPE_NONE, TYPE_CDB, TYPE_MAP, TYPE_LRU, TYPE_LRU2};
 
 class NamedCache {
 
@@ -24,6 +28,7 @@ public:
   virtual int  getCache(std::string strKey, std::string &strValue)=0;
   virtual int  getSize(void)=0;
   virtual int  getEntries(void)=0;
+  virtual int  getErrNum(void)=0;
   virtual std::string getErrMsg(void)=0;
   static  std::string getFoundText(int iStat);
   static  std::string getCacheModeText(int iMode);
@@ -32,5 +37,7 @@ public:
   static  int parseCacheTypeText(const std::string& strCacheType);
 
 };
+
+#endif
 
 #endif // NAMEDCACHE_H

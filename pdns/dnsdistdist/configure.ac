@@ -34,6 +34,7 @@ BOOST_REQUIRE([$boost_required_version])
 PDNS_ENABLE_UNIT_TESTS
 PDNS_CHECK_RE2
 DNSDIST_ENABLE_DNSCRYPT
+DNSDIST_ENABLE_NAMEDCACHE
 PDNS_WITH_EBPF
 PDNS_WITH_NET_SNMP
 
@@ -142,5 +143,9 @@ AS_IF([test "x$RE2_LIBS" != "x"],
 AS_IF([test "x$NET_SNMP_LIBS" != "x"],
   [AC_MSG_NOTICE([SNMP: yes])],
   [AC_MSG_NOTICE([SNMP: no])]
+)
+AS_IF([test "x$enable_namedcache" != "xno"],
+  [AC_MSG_NOTICE([NAMEDCACHE: yes])],
+  [AC_MSG_NOTICE([NAMEDCACHE: no])]
 )
 AC_MSG_NOTICE([])

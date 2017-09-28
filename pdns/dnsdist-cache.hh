@@ -36,34 +36,6 @@ struct DNSQuestion;
 
 #include "dnsdist-namedcache.hh"
 
-#ifdef TRASH
-
-class DNSDistNamedCache : boost::noncopyable
-{
-public:
-  DNSDistNamedCache(const string& fileName, size_t maxEntries, int iDebug=0);
-  ~DNSDistNamedCache();
-  uint64_t getMaxEntries();
-  string   getFileName();
-  uint64_t getCacheEntries();
-  uint64_t getCacheHits();
-  uint64_t getCdbHits();
-  uint64_t getCacheMiss();
-  bool     isFileOpen();
-  int      lookup(const string& strQuery, string& strData);
-
-private:
-  int iDebug;
-  std::string strFileName;
-  size_t uMaxEntries;
-  LRUCache lrucache;
-  bool bOpened;
-  std::atomic<uint64_t> cache_hits{0};
-  std::atomic<uint64_t> cdb_hits{0};
-  std::atomic<uint64_t> cache_miss{0};
-};
-
-#endif
 
 // ----------------------------------------------------------------------------
 

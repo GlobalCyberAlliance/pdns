@@ -89,10 +89,15 @@ std::vector<std::shared_ptr<DynBPFFilter> > g_dynBPFFilters;
 vector<ClientState *> g_frontends;
 GlobalStateHolder<pools_t> g_pools;
 
+
 // ----------------------------------------------------------------------------
 // GCA - Seth - NamedCache 8/31/2017
 
+#ifdef HAVE_NAMEDCACHE
+
 GlobalStateHolder<namedCaches_t> g_namedCaches;
+
+#endif
 
 // ----------------------------------------------------------------------------
 
@@ -341,7 +346,7 @@ bool fixUpResponse(char** response, uint16_t* responseLen, size_t* responseSize,
 // Seth - GCA - copy qTag data into response object from question - 8/23/2017
 // ----------------------------------------------------------------------------
 int copyQTag(DNSResponse &dr, const std::shared_ptr<QTag> qTagData)
-  {
+{
   int iCount = 0;
 
   if(qTagData != nullptr) {
@@ -349,19 +354,21 @@ int copyQTag(DNSResponse &dr, const std::shared_ptr<QTag> qTagData)
       dr.qTag = std::make_shared<QTag>();
       }
 
-  if(dr.qTag != nullptr) {
-    for (const auto& itr : qTagData->tagData) {
-      dr.qTag->add(itr.first, itr.second);
-      iCount++;
-      }
+    if(dr.qTag != nullptr) {
+      for (const auto& itr : qTagData->tagData) {
+        dr.qTag->add(itr.first, itr.second);
+        iCount++;
+        }
     }
   }
   return(iCount);
 }
 
 // ----------------------------------------------------------------------------
-// createNamedCacheIfNotExists() - experimental
+// createNamedCacheIfNotExists() - does what is says - 9/1/2017
 // ----------------------------------------------------------------------------
+
+#ifdef HAVE_NAMEDCACHE
 
 std::shared_ptr<NamedCacheX> createNamedCacheIfNotExists(namedCaches_t& namedCaches, const string& poolName)
 {
@@ -369,40 +376,19 @@ std::shared_ptr<NamedCacheX> createNamedCacheIfNotExists(namedCaches_t& namedCac
   namedCaches_t::iterator it = namedCaches.find(poolName);
   if (it != namedCaches.end()) {
     pool = it->second;
-  }
-  else {
-    if (!poolName.empty())
-      vinfolog("Creating named cache %s", poolName);
-    pool = std::make_shared<NamedCacheX>();
+  } else {
+      if (!poolName.empty())
+        vinfolog("Creating named cache %s", poolName);
+      pool = std::make_shared<NamedCacheX>();
 
-    pool->namedCache = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, false);       // last var is debug switch
-    namedCaches.insert(std::pair<std::string,std::shared_ptr<NamedCacheX> >(poolName, pool));
-  }
+      pool->namedCache = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, false);       // last var is debug switch
+      namedCaches.insert(std::pair<std::string,std::shared_ptr<NamedCacheX> >(poolName, pool));
+    }
   return pool;
 }
 
-// ----------------------------------------------------------------------------
-#ifdef TRASH
-const std::shared_ptr<DNSDistNamedCache> createNamedCacheIfNotExists(namedCaches_t& namedCaches, const string& ncName)
-{
-  std::shared_ptr<DNSDistNamedCache> nc;
-  const namedCaches_t::iterator it = namedCaches.find(ncName);
-  if (it != namedCaches.end()) {
-    printf("----------> createNamedCacheIfNotExists() - found entry!   Object Count: %lu \n", it->second.use_count());
-
-    nc = it->second;
-  }
-  else {
-    if (!ncName.empty())
-      vinfolog("Creating named cache %s", ncName);
-    printf("----------> createNamedCacheIfNotExists() - no entry found - create one! \n");
-
-    nc = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, true);
-    namedCaches.insert(std::pair<std::string,std::shared_ptr<DNSDistNamedCache> >(ncName, nc));
-  }
-  return nc;
-}
 #endif
+
 // ----------------------------------------------------------------------------
 
 

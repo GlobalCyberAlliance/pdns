@@ -2,9 +2,12 @@
 #define MAPCACHE_H
 
 #include <map>
+
+#include "config.h"
 #include "dnsdist-nc-namedcache.hh"
 
-// ----------------------------------------------------------------------------
+#ifdef HAVE_NAMEDCACHE
+
 class CdbMapCache : public NamedCache {
 
 public:
@@ -14,6 +17,7 @@ public:
    bool  init(int capacity, int iCacheMode);
    bool  open(std::string strFileName);
    bool  close(void);
+   int   getErrNum(void);
    std::string getErrMsg(void);
    int   getSize();
    int   getEntries();
@@ -22,6 +26,7 @@ public:
 private:
    int  iEntriesRead;
    int iCacheMode;                       // not used at present
+   int iErrNum;                          // errno
    std::string strErrMsg;
    std::map<std::string, std::string> mapKeyData;
 
@@ -31,5 +36,7 @@ private:
    int  getText(FILE *fio, unsigned int uBytes, std::string &strData);
    bool get(std::string key, std::string &strData);
 };
+
+#endif
 
 #endif // MAPCACHE_H

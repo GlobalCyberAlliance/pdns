@@ -5,34 +5,32 @@
 #include <unistd.h>
 #include <cdb.h>
 #include <map>
+#include <unordered_map>
+
+#include "config.h"
 
 #include "dnsdist-nc-cdbio.hh"
 #include "dnsdist-nc-namedcache.hh"
 
+#ifdef HAVE_NAMEDCACHE
 
-// ----------------------------------------------------------------------------
-class Node {
-  public:
-  std::string key, value;
-  Node *prev, *next;
-  Node(std::string k, std::string v): key(k), value(v), prev(NULL), next(NULL) {}
-};
-
-// ----------------------------------------------------------------------------
-class DoublyLinkedList {
-private:
-    Node *front, *rear;
-      bool isEmpty() {return rear == NULL;}
-
+class lruCache {
 public:
-  DoublyLinkedList(): front(NULL), rear(NULL) {}
-  Node* add_page_to_head(std::string key, std::string value);
-  void move_page_to_head(Node *page);
-  void remove_rear_page();
-  Node* get_rear_page();
+  typedef typename std::string keyType;
+  typedef typename std::string valueType;
+  typedef typename std::pair<keyType, valueType> key_value_pair_t;
+  typedef typename std::list<key_value_pair_t>::iterator list_iterator_t;
+  lruCache(size_t=0);
+  ~lruCache();
+  void put(const std::string& key, const std::string& value);
+  bool get(const std::string& key, std::string &val);
+  size_t size();
+private:
+  std::list<key_value_pair_t> cacheList;                // front is most recent use
+  std::unordered_map<keyType, list_iterator_t> cacheMap;  // key with ptr to list entry
+  size_t iMaxEntries;                                   // max entries to allow
 };
 
-// ----------------------------------------------------------------------------
 class LRUCache : public NamedCache  {
 
 public:
@@ -42,6 +40,7 @@ public:
   bool setCacheMode(int iMode);
   bool init(int capacity, int iCacheMode);
   int  getSize();
+  int  getErrNum(void);
   std::string getErrMsg(void);
   bool open(std::string strFileName);
   bool close();
@@ -50,24 +49,14 @@ public:
 
 
 private:
-
-  int capacity, size;
-  int iCacheMode;                       // CACHE::NONE, CACHE::RPZ, CACHE::ALL
-  DoublyLinkedList *pageList;
-  std::map<std::string, Node*> pageMap;
-//  int fd;                               // cdb file descriptor
-//  struct cdb cdbX;                      // cdb file info
+  int iMaxEntries;
+  int iCacheMode;       // CACHE::NONE, CACHE::RPZ, CACHE::ALL
   cdbIO cdbFH;
-  std::string strErrMsg;
-
-void put(std::string key, std::string value);
-bool get(std::string key, std::string &val);
-//bool getCDB(std::string strKey, std::string &strValue);
-
+  lruCache *ptrCache;
+  void put(const std::string key, const std::string value);
+  bool get(const std::string key, std::string &val);
 };
 
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
+#endif
 
 #endif // LRUCACHE_H

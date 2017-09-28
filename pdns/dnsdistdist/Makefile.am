@@ -78,6 +78,7 @@ dnsdist_SOURCES = \
 	dnsdist-namedcache.cc dnsdist-namedcache.hh \
 	dnsdist-nc-cdbio.cc dnsdist-nc-cdbio.hh \
 	dnsdist-nc-lrucache.cc dnsdist-nc-lrucache.hh \
+	dnsdist-nc-lrucache2.cc dnsdist-nc-lrucache2.hh \
 	dnsdist-nc-mapcache.cc dnsdist-nc-mapcache.hh \
 	dnsdist-nc-namedcache.cc dnsdist-nc-namedcache.hh \
 	dnsdist-nc-nocache.cc dnsdist-nc-nocache.hh \
