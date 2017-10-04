@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE abiword PUBLIC "-//ABISOURCE//DTD AWML 1.0 Strict//EN" "http://www.abisource.com/awml.dtd">
+<abiword template="false" xmlns:ct="http://www.abisource.com/changetracking.dtd" xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:math="http://www.w3.org/1998/Math/MathML" xid-max="26" xmlns:dc="http://purl.org/dc/elements/1.1/" styles="unlocked" fileformat="1.0" xmlns:svg="http://www.w3.org/2000/svg" xmlns:awml="http://www.abisource.com/awml.dtd" xmlns="http://www.abisource.com/awml.dtd" xmlns:xlink="http://www.w3.org/1999/xlink" version="0.99.2" xml:space="preserve" props="dom-dir:ltr; document-footnote-restart-section:0; document-endnote-type:numeric; document-endnote-place-enddoc:1; document-endnote-initial:1; lang:en-US; document-endnote-restart-section:0; document-footnote-restart-page:0; document-footnote-type:numeric; document-footnote-initial:1; document-endnote-place-endsection:0">
+<!-- ======================================================================== -->
+<!-- This file is an AbiWord document.                                        -->
+<!-- AbiWord is a free, Open Source word processor.                           -->
+<!-- More information about AbiWord is available at http://www.abisource.com/ -->
+<!-- You should not edit this file by hand.                                   -->
+<!-- ======================================================================== -->
+
+<metadata>
+<m key="abiword.date_last_changed">Tue Oct  3 22:18:05 2017
+</m>
+<m key="abiword.generator">AbiWord</m>
+<m key="dc.creator">SethO</m>
+<m key="dc.date">Tue Oct  3 22:18:05 2017
+</m>
+<m key="dc.format">application/x-abiword</m>
+</metadata>
+<rdf>
+</rdf>
+<history version="1" edit-time="982" last-saved="1507083485" uid="f80b401e-a8a7-11e7-97d9-f49fbdf62556">
+<version id="1" started="1507083485" uid="41855692-a8aa-11e7-97d9-f49fbdf62556" auto="0" top-xid="26"/>
+</history>
+<styles>
+<s type="P" name="Normal" followedby="Current Settings" props="font-family:Times New Roman; margin-top:0pt; color:000000; margin-left:0pt; text-position:normal; widows:2; font-style:normal; text-indent:0in; font-variant:normal; font-weight:normal; margin-right:0pt; font-size:12pt; text-decoration:none; margin-bottom:0pt; line-height:1.0; bgcolor:transparent; text-align:left; font-stretch:normal"/>
+</styles>
+<pagesize pagetype="Letter" orientation="portrait" width="8.500000" height="11.000000" units="in" page-scale="1.000000"/>
+<section xid="9" props="page-margin-footer:0.5in; page-margin-header:0.5in">
+<p style="Normal" xid="10"><c>Why you want to keep track of ‘missed’ hits in a rpz named cache using a lru method.</c></p>
+<p style="Normal" xid="26"><c></c></p>
+<p style="Normal" xid="25"><c>Seth 10/3/2017</c></p>
+<p style="Normal" xid="1"><c></c></p>
+<p style="Normal" xid="3"><c></c></p>
+<p style="Normal" xid="4"><c>Lets say you are using a lru named cache in dnsdist which you set up something like this:</c></p>
+<p style="Normal" xid="5"><c></c></p>
+<p style="Normal" xid="6"><c>getNamedCache(“xxx”):bindToCDB(“zzz.cdb”, “cdb”, 10000) </c></p>
+<p style="Normal" xid="7"><c></c></p>
+<p style="Normal" xid="8"><c>It will only populate the lru cache with hits from the zzz.cdb file.  The problem is that if you are using the named cache to look for rpz hits which should make up a small percentage of the total dns lookups which are mostly valid.  The net effect of this will be to cause a typical lookup to not appear in the lru cache and the rpz cdb file will have to be searched before failing for a valid dns lookup.  The way to get around this is to store all lookups presented to the named cache.  If they are not found in either the lru cache or the associated cdb file a new entry with an empty data field should be stored in the lru cache.  Since all rpz entries in the cdb file contain a data field it is easy to distinguish between rpz hits and those hits that appear in the named cache that should be sent on to a normal lookup by a dns server.</c></p>
+<p style="Normal" xid="19"><c></c></p>
+<p style="Normal" xid="20"><c>The way to setup the lru named cache for use with a rpz file should be something like this:</c></p>
+<p style="Normal" xid="21"><c></c></p>
+<p style="Normal" xid="22"><c props="font-family:Times New Roman; font-size:12pt; lang:en-US; text-position:normal; font-weight:normal; font-style:normal; text-decoration:none">getNamedCache(“xxx”):bindToCDB(“zzz.cdb”, “all”, 10000) </c></p>
+<p style="Normal" xid="23"><c props="font-family:Times New Roman; font-size:12pt; lang:en-US; text-position:normal; font-weight:normal; font-style:normal; text-decoration:none"></c></p>
+<p style="Normal" xid="24"><c props="font-family:Times New Roman; font-size:12pt; lang:en-US; text-position:normal; font-weight:normal; font-style:normal; text-decoration:none">now the named cache will have entries from all requests with a much less frequent read of the acutal cdb file.</c></p>
+<p style="Normal" xid="11" props="font-family:Times New Roman; font-size:12pt; lang:en-US; text-position:normal; font-weight:normal; font-style:normal; text-decoration:none"><c></c></p>
+<p style="Normal" xid="12"><c>If you are storing the entire rpz cdb file in memory with something like this:</c></p>
+<p style="Normal" xid="13"><c></c></p>
+<p style="Normal" xid="14"><c>getNamedCache(“yyy):loadFromCDB(“zzz.cdb”)</c></p>
+<p style="Normal" xid="15"><c></c></p>
+<p style="Normal" xid="16"><c>this isn’t a problem as if the rpz entry doesn’t exist in the cache, you just go and do a normal dns lookup with little loss in performance.</c></p>
+<p style="Normal" xid="17"><c></c></p>
+<p style="Normal" xid="18"><c></c></p>
+<p style="Normal" xid="2"><c></c></p>
+</section>
+</abiword>

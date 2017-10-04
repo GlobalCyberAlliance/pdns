@@ -1,0 +1,78 @@
+dnsdist named caches - things fixed - 9-24-2017
+
+1. ---> Removed '#ifdef TRASH' segments.
+
+2. ---> Got rid of 'snake_case' variables and replaced them with 'camelCase'.
+
+3. ---> Leaving alone:  zzz-gca-example/lua-tinycdb-0.2-modified-Makefile/cdb_make.c
+   as only change to the entire lua-tinycdb-0.2 is to the Makefile, so the 
+   compiled code will work with lua5.1 which is what dnsdist uses.
+
+4. ---> Fixed curley brace indentation for if/else/for/switch.
+
+5. In pdns/dnsdist-namedcache.hh:
+	Why is this class defined twice? 
+	---> 1st def was old commented out code using #ifdef TRASH - removed it.
+
+6. In pdns/dnsdist-lrucache.cc:
+	could just do return -1 here and remove the else
+	---> did that.
+
+7. In pdns/dnsdist-lrucache.cc:
+	I also noticed you don't indent vars that are scoped to a function. Perhaps the best way to fix all the 
+	formatting is by getting your editor to use the same style as pdns and then reformatting it?
+	---> cleaned up formatting.
+
+8. In pdns/dnsdist-namedcache.cc:
+	Is a DNSDistNamedCache always suppose to be tied to a cdb file? 
+	I'm just asking since this init() function always takes a filepath.
+	What if you wanted a named cache that was tied to a database or something?
+	Nick -> That's out of scope for the initial design.
+
+9. In pdns/dnsdist-namedcache.cc:
+	I notice there's a LRUCache, so the fileName would be ignored I suppose in that case?
+	---> fileName is the name of the cdb file which is used with the LRUCache.
+
+10. In pdns/dnsdist-nc-cdbio.cc:
+	is there a way to return the reason why the open failed instead of just the status = false?
+	---> lua functions getErrNum() and getErrMsg() added to return I/O error messages.
+
+11. I notice the LUA interface is different from the one described in this PR, is that going to be a problem?
+	---> should not be, it's actually fairly close to the specs.
+
+
+12.  In pdns/dnsdist-lrucache.cc:
+	Is there any way to simplify this function at all? It's a bit nested, perhaps you could use Guard Clauses?
+
+	For example, instead of wrapping everything around if(iStatus == 0), you could do:
+
+	if(iStatus != 0) {
+   	  fclose();
+    	  return;
+	}	
+	Some resources on this method: http://wiki.c2.com/?GuardClause
+	---> cleaned up this code.
+
+13.  Added ---enable-namedcache option to configure for building dnsdist.
+
+14.  Added entries for console help screen.
+     ---> addNamedCache()
+     ---> swapNamedCache()
+     ---> showNamedCaches()
+     ---> getNamedCache()
+
+15.  In pdns/dnsdist-lua2.cc:
+	Can we actually reset() here without locks on the underlying data structures?
+
+     From: https://dnsdist.org/advanced/tuning.html
+     Lua processing in dnsdist is serialized by an unique lock for all threads.
+     ---> Since all accessing of named caches is thru lua calls, no mutex locking is required.
+
+16.  In pdns/dnsdist-lrucache.hh:
+     Why are we implementing our own DoublyLinkedList here instead of using std::vector, or something from the boost library?
+     ---> New lru cache using std library now called with "LRU".  
+     ---> Old lru cache with own DoublyLinkedList to be LRU2.
+
+
+
+

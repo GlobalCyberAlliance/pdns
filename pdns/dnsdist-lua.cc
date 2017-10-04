@@ -756,9 +756,8 @@ vector<std::function<void(void)>> setupLua(bool client, const std::string& confi
       }catch(std::exception& e) { g_outputBuffer=e.what(); throw; }
     });
 
-  g_lua.writeFunction("addLuaAction", [](luadnsrule_t var, LuaAction::func_t func) 
-		      {
-                        setLuaSideEffect();
+  g_lua.writeFunction("addLuaAction", [](luadnsrule_t var, LuaAction::func_t func) {
+            setLuaSideEffect();
 			auto rule=makeRule(var);
 			g_rulactions.modify([rule,func](decltype(g_rulactions)::value_type& rulactions){
 			    rulactions.push_back({rule,

@@ -1,0 +1,152 @@
+Seth Ornstein
+10/3/2017
+
+Proposed new named cache functions:
+
+// -------------------------------------------------------------------------------------------------
+// showNamedCaches() - display list of named caches on the terminal
+// -------------------------------------------------------------------------------------------------
+
+showNamedCaches()
+
+// -------------------------------------------------------------------------------------------------
+// newNamedCache() - create a new or replace an existing named cache
+// -------------------------------------------------------------------------------------------------
+
+newNamedCache(cacheName="default")
+
+// -------------------------------------------------------------------------------------------------
+// getNamedCache() - get a ptr to the named cache
+// -------------------------------------------------------------------------------------------------
+
+getNamedCache(cacheName="default")
+	parameters:
+		cacheName - "xxx" - name of the named cache to get a ptr to
+
+// -------------------------------------------------------------------------------------------------
+// loadFromCDB() - load in the entire cdb into memory
+// -------------------------------------------------------------------------------------------------
+getNamedCache(cacheName="default"):loadFromCDB(fileName="")
+	returns bool true if OK, else false
+	parameters:
+		cacheName - "xxx" - name of the named cache to create
+		filename  - name of the cdb file to use.
+
+// -------------------------------------------------------------------------------------------------
+// getNamedCache() - load cdb into lru cache 
+// -------------------------------------------------------------------------------------------------
+
+getNamedCache(cacheName="default"):bindToCDB(fileName="", cacheMode="all", maxEntries=10000)
+	returns bool true if OK, else false
+	parameters:
+		cacheName - "xxx" - name of the named cache to create
+		filename  - name of the cdb file to use.
+		lruCacheMode - 
+                                 "none" - don't store any entries found in cdb in cache.
+                                 "rpz"  - store rpz entries found in cdb file in cache.
+                                 "all"  - same as 'rpz', but also store 'not found in cdb'
+                                          entries in cache with zero length data field.
+                maxEntries   - maximum entries in cache
+
+// -------------------------------------------------------------------------------------------------
+// lookup() - lookup entry in named cache
+// -------------------------------------------------------------------------------------------------
+
+cacheResult = getNamedCache("whitelist"):lookup(dnsName)
+	returns:
+		table with following fields:
+                               nc_found - text return status
+				     -1       - cache not ready for use.
+                                     0 length - match not found
+                                     "cdb"    - match found in cdb file, CACHE_HIT::HIT_CACHE || CACHE_HIT::HIT_CACHE_NO_DATA
+                                     "cache"  - match found in cache, CACHE_HIT::HIT_CACHE || CACHE_HIT::HIT_CACHE_NO_DATA
+                               nc_data - string from cdb table match
+
+	parameters:
+		dnsName - dns name to lookup - WITHOUT the end period.
+
+// -------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+// NOTE: The below two functions are to take advantage of the new QTag object inside of the DNSQuestion object
+//       This should run faster than the above call for two reasons:
+//		1. Supplying dnsQuestion ptr, rather than dns name.
+//		   The way that named cache lookup will work in dnsdist to be in a lua subroutine
+//                 callback that is setup by addLuaAction().  The dnsQuestion object to supplied to
+//                 to subroutine and extracting the dns name string from the object adds more lua
+//                 source code and is slower than doing it in C++.  Also the final period in the 
+//                 dns name must be removed before doing the lookup, which is kind of clunky in lua.
+//              2. Most of the time a named cache lookup either does not find a match or if we are
+//                 caching 'missed' lookups - as most of the time we will be looking up good dns
+//                 names and we don't want to keep hitting the cdb file when using the lru cache.
+//                 It would be much faster if lua only had to look at an integer instead of everytime
+//                 having to go into a table to find if a cache hit happened.  If a cache hit did
+//                 happen, calling a second function to get a string value from the QTag object which
+//                 is contained inside the DNSQuestion object if very fast.
+// -------------------------------------------------------------------------------------------------
+// lookupDQ() - faster lookup entry in named cache - less slow lua code required for typical use
+// -------------------------------------------------------------------------------------------------
+
+// lookupQ() - use DNSQuestion & addTag to store search results in QTag automatically
+//                  - example: iResult = getNamedCache("xxx"):lookupQ(dq)
+//                  - return table with QTag fields:
+//                  DNSQuestion QTag fields:
+//                      found - "T" - found
+//                              "F" - not found
+//                      reason - 'integer' value as string:
+//                               CACHE_HIT::NOT_READY         - -1 (cache not read yet)
+//                               CACHE_HIT::HIT_NONE          -  0 (match not found)
+//                               CACHE_HIT::HIT_CDB           -  1 (match found in cdb file, data field not empty)
+//                               CACHE_HIT::HIT_CACHE         -  2 (match found in cache, data field not empty)
+//                               CACHE_HIT::HIT_CACHE_NO_DATA -  3 (match found in cache, empty data field)
+//                               CACHE_HIT::HIT_CDB_NO_DATA   -  4 (match found in cdb file, empty data field)
+//                      data - string from cdb table match
+
+// -------------------------------------------------------------------------------------------------
+// getNamedCacheDataQtag() - get result data string lookup entry from named cache lookup from Qtag
+// -------------------------------------------------------------------------------------------------
+
+cacheResult = getNamedCacheLookupResult()
+	returns:
+		table with following fields:
+                               nc_found - text return status
+				     -1       - cache not ready for use.
+                                     0 length - match not found
+                                     "cdb"    - match found in cdb file, CACHE_HIT::HIT_CACHE || CACHE_HIT::HIT_CACHE_NO_DATA
+                                     "cache"  - match found in cache, CACHE_HIT::HIT_CACHE || CACHE_HIT::HIT_CACHE_NO_DATA
+                               nc_data - string from cdb table match
+
+// -------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+
+// -------------------------------------------------------------------------------------------------
+// showStats() - display statistics for the named cache on the terminal
+// -------------------------------------------------------------------------------------------------
+
+getNamedCache("whitelist"):showStats()
+
+// -------------------------------------------------------------------------------------------------
+getStats() - get statistics for the cache and return them in a table
+// -------------------------------------------------------------------------------------------------
+
+getNamedCache("whitelist"):getStats()
+
+example:
+       local tableStat2 = getNamedCache("whitelist"):getStats()          -- display statistics
+       for k, v in pairs( tableStat2 ) do
+           print(string.format("       %-23s  %s ", k, v))
+       end
+
+// -------------------------------------------------------------------------------------------------
+// resetCounters() - reset the statistic counters
+// -------------------------------------------------------------------------------------------------
+
+getNamedCache("whitelist"):resetCounters()
+
+
+// -------------------------------------------------------------------------------------------------
+// deleteResources() - delete all the resources for a named cache
+// -------------------------------------------------------------------------------------------------
+
+getNamedCache("whitelist"):deleteResources()
+
