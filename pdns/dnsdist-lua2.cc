@@ -724,24 +724,32 @@ void moreLua(bool client)
 // ----------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------
-// Seth - GCA - named cache - 10/3/2017
+// Seth - GCA - named cache - 10/4/2017
+//      see dnsdist config file pdns/zzz-gca-example/dnsdist-named-cache-B.conf for examples.
 // ----------------------------------------------------------------------------
-// new lua functions - 10/3/2017
+// new lua functions - 10/4/2017
 //
 // NamedCacheX general methods:
-//      addNamedCache(strCacheName) - create a named cache if it doesn't exist
+//      addNamedCache([strCacheName]) - create a named cache if it doesn't exist
 //                         - parameters:
 //                               strCacheName - cache name, defaults to "default"
 //                        - example: addNamedCache("yyy")
 //      showNamedCaches() - display list of named caches on terminal
 //                        - example: showNamedCaches()
 //
-//      closeNamedCache() - close a named cache, does the same thing as addNamedCache
-//                          is used to free up resources used by a no longer needed cache
+//      closeNamedCache() - close a named cache, creates it if doesn't exist.
+//                          Used to free up resources used by a no longer needed cache
 //      swapNamedCaches(strCacheNameA, strCacheNameB) - swap the two named caches.
+//                          Either named cache will be created if it doesn't exist.
 //                        - example: swapNamedCaches("xxx", "yyy")
+//      reloadNamedCache([strCacheNameA], [maxEntries])
+//                        - parameters:
+//                          [strCacheName] - named cache to reload - else "default"
+//                          [maxEntries] - maxEntries if it is going to be changed, only works if "bindToCDB" type named cache.
+//                        - example:reloadNamedCache("xxx")
+//
 // NamedCacheX methods:
-//      getNamedCache(strCacheName) - get named cache ptr, create if not exist
+//      getNamedCache([strCacheName]) - get named cache ptr, create if not exist
 //                         - parameters:
 //                               strCacheName - cache name, defaults to "default"
 //                         - example:
@@ -768,7 +776,7 @@ void moreLua(bool client)
 //                         - parameters:
 //                               strCacheName - cdb file path name to use
 //                         - examples:
-//                               loadFromCDB("xxx")
+//                               loadFromCDB("xxx.cdb")
 //      bindToCDB()        - (re)initialize a new lru cache using a cdb file
 //                         - parameters:
 //                               strCacheName - cdb file path name to use
@@ -780,8 +788,8 @@ void moreLua(bool client)
 //                               maxEntries - number of max entries to store in memory
 //                                         The default is 10000
 //                         - examples:
-//                              loadFromCDB("xxx", "cdb", 20000)
-//                              loadFromCDB("xxx")  -- mode defaults to cdb, maxEntries to 10000
+//                              loadFromCDB("xxx.cdb", "cdb", 20000)
+//                              loadFromCDB("xxx.cdb")  -- mode defaults to cdb, maxEntries to 10000
 //      getNamedCacheReasonText() - get reason text given string number - for debugging
 //                         - parameters:
 //                              strReason - 'integer' string from QTag field reason
@@ -871,8 +879,10 @@ void moreLua(bool client)
       }
       auto localPools = g_namedCaches.getCopy();
       std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, strCacheName);
+      pool->namedCache->init("", "", "", 0);       // remove resources from the 'temp' named cache
       g_namedCaches.setState(localPools);
     });
+
 
 // ----------------------------------------------------------------------------
 // swapNamedCaches() - swap between two named caches, doesn't return pointer
@@ -889,6 +899,44 @@ void moreLua(bool client)
       g_namedCaches.setState(localPools);
     });
 
+// ----------------------------------------------------------------------------
+// reloadNamedCache() - reload a named caches, doesn't return pointer
+//                   - parameters:
+//                     [strCacheName] - named cache to reload - else "default"
+//                     [maxEntries] - maxEntries if it is going to be changed, only works if "bindToCDB" type named cache.
+//                   - example:reloadNamedCache("xxx")
+// ----------------------------------------------------------------------------
+  g_lua.writeFunction("reloadNamedCache", [](const boost::optional<std::string> cacheName, boost::optional<int> maxEntries) {
+      setLuaSideEffect();
+      auto localPools = g_namedCaches.getCopy();
+      std::string strCacheNameA = "default";
+      if(cacheName) {
+        strCacheNameA = *cacheName;
+      }
+      std::string strCacheNameB = "temp4rld";
+      std::shared_ptr<NamedCacheX> entryCacheA = createNamedCacheIfNotExists(localPools, strCacheNameA);
+      std::shared_ptr<NamedCacheX> entryCacheB = createNamedCacheIfNotExists(localPools, strCacheNameB);
+
+      std::string strFileNameA = entryCacheA->namedCache->getFileName();
+      std::string strCacheTypeA = entryCacheA->namedCache->getCacheTypeText();
+      std::string strCacheModeA = entryCacheA->namedCache->getCacheModeText();
+      int iMaxEntriesA = entryCacheA->namedCache->getMaxEntries();
+      if(maxEntries) {
+        iMaxEntriesA = *maxEntries;
+      }
+
+      bool bStat = entryCacheB->namedCache->init(strFileNameA, strCacheTypeA, strCacheModeA , iMaxEntriesA, false);
+      if(bStat == true) {
+        std::shared_ptr<DNSDistNamedCache> namedCacheTemp = entryCacheA->namedCache;
+        entryCacheA->namedCache = entryCacheB->namedCache;
+        entryCacheB->namedCache = namedCacheTemp;
+        entryCacheB->namedCache->init("", "", "", 0);       // remove resources from the 'temp' named cache
+      } else {
+        printf("ERROR! - could not reload named cache %s  -> %s (%d) \n", strFileNameA.c_str(), entryCacheB->namedCache->getErrMsg().c_str(), entryCacheB->namedCache->getErrNum());
+      }
+
+      g_namedCaches.setState(localPools);
+    });
 // ----------------------------------------------------------------------------
 // NamedCacheX general methods
 // ----------------------------------------------------------------------------

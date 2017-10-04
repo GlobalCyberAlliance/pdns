@@ -43,8 +43,8 @@ std::string strFound;
   case CACHE_MODE::MODE_NONE:
     strFound = "None";
     break;
-  case CACHE_MODE::MODE_RPZ:
-    strFound = "RPZ";
+  case CACHE_MODE::MODE_CDB:
+    strFound = "CDB";
     break;
   case CACHE_MODE::MODE_ALL:
     strFound = "ALL";
@@ -64,8 +64,8 @@ std::string strTemp;
   if(strTemp == "none") {
     return(CACHE_MODE::MODE_NONE);
   }
-  if(strTemp == "rpz") {
-    return(CACHE_MODE::MODE_RPZ);
+  if(strTemp == "cdb") {
+    return(CACHE_MODE::MODE_CDB);
   }
   if(strTemp == "all") {
     return(CACHE_MODE::MODE_ALL);

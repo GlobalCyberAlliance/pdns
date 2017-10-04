@@ -183,7 +183,7 @@ int LRUCache2::getCache(const std::string strKey, std::string &strValue)
   }
 
   if(cdbFH.get(strKey, strValue) == true) {     // not in cache, read from CDB
-    if(iCacheMode >= CACHE_MODE::MODE_RPZ) {
+    if(iCacheMode >= CACHE_MODE::MODE_CDB) {
        put(strKey, strValue);                   // store in cache
     }
     if(strValue.empty()) {

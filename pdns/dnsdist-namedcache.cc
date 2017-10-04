@@ -108,6 +108,9 @@ bool bStat = false;
       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache(::init() - Error msg: %s \n", nc->getErrMsg().c_str());
     }
   }
+  if(bOpened == true) {
+    bStat = true;
+  }
   return(bStat);
 }
 

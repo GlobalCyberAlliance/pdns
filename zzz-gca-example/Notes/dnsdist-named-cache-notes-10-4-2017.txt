@@ -149,24 +149,32 @@ Note:  All new lua commands (10/4/2017) are located in dnsdist-lua2.cc starting 
 
        
 // ----------------------------------------------------------------------------
-// Seth - GCA - named cache - 10/3/2017
+// Seth - GCA - named cache - 10/4/2017
+//      see dnsdist config file pdns/zzz-gca-example/dnsdist-named-cache-B.conf for examples.
 // ----------------------------------------------------------------------------
-// new lua functions - 10/3/2017
+// new lua functions - 10/4/2017
 //
 // NamedCacheX general methods:
-//      addNamedCache(strCacheName) - create a named cache if it doesn't exist
+//      addNamedCache([strCacheName]) - create a named cache if it doesn't exist
 //                         - parameters:
 //                               strCacheName - cache name, defaults to "default"
 //                        - example: addNamedCache("yyy")
 //      showNamedCaches() - display list of named caches on terminal
 //                        - example: showNamedCaches()
 //
-//      closeNamedCache() - close a named cache, does the same thing as addNamedCache
-//                          is used to free up resources used by a no longer needed cache
+//      closeNamedCache() - close a named cache, creates it if doesn't exist.
+//                          Used to free up resources used by a no longer needed cache
 //      swapNamedCaches(strCacheNameA, strCacheNameB) - swap the two named caches.
+//                          Either named cache will be created if it doesn't exist.
 //                        - example: swapNamedCaches("xxx", "yyy")
+//      reloadNamedCache([strCacheNameA], [maxEntries])
+//                        - parameters:
+//                          [strCacheName] - named cache to reload - else "default"
+//                          [maxEntries] - maxEntries if it is going to be changed, only works if "bindToCDB" type named cache.
+//                        - example:reloadNamedCache("xxx")
+//
 // NamedCacheX methods:
-//      getNamedCache(strCacheName) - get named cache ptr, create if not exist
+//      getNamedCache([strCacheName]) - get named cache ptr, create if not exist
 //                         - parameters:
 //                               strCacheName - cache name, defaults to "default"
 //                         - example:
@@ -193,7 +201,7 @@ Note:  All new lua commands (10/4/2017) are located in dnsdist-lua2.cc starting 
 //                         - parameters:
 //                               strCacheName - cdb file path name to use
 //                         - examples:
-//                               loadFromCDB("xxx")
+//                               loadFromCDB("xxx.cdb")
 //      bindToCDB()        - (re)initialize a new lru cache using a cdb file
 //                         - parameters:
 //                               strCacheName - cdb file path name to use
@@ -205,8 +213,8 @@ Note:  All new lua commands (10/4/2017) are located in dnsdist-lua2.cc starting 
 //                               maxEntries - number of max entries to store in memory
 //                                         The default is 10000
 //                         - examples:
-//                              loadFromCDB("xxx", "cdb", 20000)
-//                              loadFromCDB("xxx")  -- mode defaults to cdb, maxEntries to 10000
+//                              loadFromCDB("xxx.cdb", "cdb", 20000)
+//                              loadFromCDB("xxx.cdb")  -- mode defaults to cdb, maxEntries to 10000
 //      getNamedCacheReasonText() - get reason text given string number - for debugging
 //                         - parameters:
 //                              strReason - 'integer' string from QTag field reason
@@ -230,5 +238,3 @@ Note:  All new lua commands (10/4/2017) are located in dnsdist-lua2.cc starting 
 //                                  data - string from cdb table match
 
 // ----------------------------------------------------------------------------
-
-
