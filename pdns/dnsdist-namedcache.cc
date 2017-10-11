@@ -56,8 +56,8 @@ bool DNSDistNamedCache::init(const std::string& fileName, const std::string& str
 {
 bool bStat = false;
 
-  reset();             // reset existing object
   iDebug = debug;
+  reset();             // reset existing object
   strFileName = fileName;
   uMaxEntries = maxEntries;
   bOpened = false;
@@ -242,9 +242,9 @@ bool DNSDistNamedCache::isFileOpen()
   return(bOpened);
 }
 
-std::string  DNSDistNamedCache::getCacheTypeText()
+std::string  DNSDistNamedCache::getCacheTypeText(bool bLoadBindMode)
 {
-  return(NamedCache::getCacheTypeText(iCacheType));
+  return(NamedCache::getCacheTypeText(iCacheType, bLoadBindMode));
 }
 
 std::string  DNSDistNamedCache::getCacheModeText()

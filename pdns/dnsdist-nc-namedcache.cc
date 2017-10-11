@@ -74,7 +74,7 @@ std::string strTemp;
   return( CACHE_MODE::MODE_NONE);
 }
 
-std::string NamedCache::getCacheTypeText(int iType)
+std::string NamedCache::getCacheTypeText(int iType, bool bLoadBindMode)
 {
 std::string strFound;
 
@@ -87,12 +87,18 @@ std::string strFound;
       break;
     case CACHE_TYPE::TYPE_LRU:
       strFound = "LRU";
+      if(bLoadBindMode == true) {           // for user display with bindToCDB()
+        strFound = "BIND";
+        }
       break;
     case CACHE_TYPE::TYPE_LRU2:
       strFound = "LRU2";
       break;
     case CACHE_TYPE::TYPE_MAP:
       strFound = "MAP";
+      if(bLoadBindMode == true) {           // for user display with loadFromCDB()
+        strFound = "LOAD";
+        }
       break;
     default:
       strFound = "????";

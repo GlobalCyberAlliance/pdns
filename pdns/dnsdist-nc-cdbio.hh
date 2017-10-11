@@ -1,6 +1,7 @@
 #ifndef CDBIO_H
 #define CDBIO_H
 
+#include <errno.h>
 #include <string>
 #include <string.h>                     // strerror()
 #include <fcntl.h>

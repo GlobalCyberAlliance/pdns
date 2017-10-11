@@ -32,7 +32,7 @@ public:
   virtual std::string getErrMsg(void)=0;
   static  std::string getFoundText(int iStat);
   static  std::string getCacheModeText(int iMode);
-  static  std::string getCacheTypeText(int iType);
+  static  std::string getCacheTypeText(int iType, bool bLoadBindMode=false);
   static  int parseCacheModeText(const std::string& strCacheType);
   static  int parseCacheTypeText(const std::string& strCacheType);
 

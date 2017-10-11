@@ -69,7 +69,7 @@ public:
   bool     isFileOpen();
   int      lookup(const std::string& strQuery, std::string& strData);
   bool     reset();
-  std::string getCacheTypeText();
+  std::string getCacheTypeText(bool bLoadBindMode = false);
   std::string getCacheModeText();
   time_t getCreationTime();
   time_t getCounterResetTime();
