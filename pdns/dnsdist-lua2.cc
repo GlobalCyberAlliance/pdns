@@ -1129,7 +1129,7 @@ void moreLua(bool client)
       });
 
 // ----------------------------------------------------------------------------
-// loadFromCDB - (re)initialize a new cache intirely into memory
+// loadFromCDB - (re)initialize a new cache entirely into memory
 //      - parameters:
 //          filename - cdb file to load
 //      - returns:
@@ -1143,7 +1143,7 @@ void moreLua(bool client)
           std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
           if (nc) {
 //            printf("DNSDistNamedCache::loadFromCDB() \n");
-            bStat = nc->init(fileName, "MAP", "ALL" , 1, false);
+            bStat = nc->init(fileName, "MAP", "CDB" , 1, false);
             } else {
 //              printf("DNSDistNamedCache::loadFromCDB() - null ptr \n");
               }

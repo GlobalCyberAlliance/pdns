@@ -97,6 +97,9 @@ bool bStat = false;
     }
     if(nc->open(fileName) == true) {
       bOpened = true;
+      if(iCacheType == CACHE_TYPE::TYPE_MAP) {
+        uMaxEntries = nc->getEntries();
+      }
     } else {
         uMaxEntries = 0;
       }
