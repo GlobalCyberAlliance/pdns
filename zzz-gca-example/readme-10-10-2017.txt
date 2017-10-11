@@ -10,12 +10,40 @@ git clone -b dnsdist-named-caches https://github.com/GlobalCyberAlliance/pdns.gi
 
 cd into pdns/zzz-gca-example which has my extra scripts, utilities, notes, etc - this is not part of the actual distribution.
 
+-----------------------------------------------------------------------------------
+
+Note: the following libraries were needed to be installed on Ubuntu 16.04
+in order to run the build script: pdns/zzz-gca-example/build-dnsdist2-namedcache.sh
+your system may differ.
+
+libsodium-dev
+ragel
+libedit-dev
+libboost-all-dev
+lua5.1              version 5.1 - higher versions may cause trouble?
+liblua5.1-dev       version 5.1 - higher versions may cause trouble?
+tinycdb             version 0.78
+libcdb-dev          version 0.78
+protobuf-compiler   this was not flagged by autoconf as missing.
+virtualenv          this was not flagged by autoconf as missing.
+
+-----------------------------------------------------------------------------------
+
 
 Compile dnsdist with the libsodium option (needed for protobuf use) and the named caches option enabled by running build-dnsdist2-namedcache.sh
 
-Install tinycdb - libcdb-dev version 0.78
+-----------------------------------------------------------------------------------
+For testing using the built in protobuf logger test program:
 
-Make sure you have lua 5.1 installed on your computer.
+Need to install the following library: pip
+
+Then after installing pip type: pip install protobuf
+
+Ready the powerdns generic protobuf server by generating dnsmessage_pb2.py in pdns/contrib/ by following the instructions in the top couple lines of 
+pdns/contrib/ProtobufLogger.py:
+	run: protoc -I=../pdns/ --python_out=. ../pdns/dnsmessage.proto
+
+-----------------------------------------------------------------------------------
 
 cd into the lua-tinycdb-0.2-modified-Makefile directory, which is inside pdns/zzz-gca-example.
 
@@ -26,9 +54,6 @@ Run the test-tinycdb.lua program to verify that lua, tinycdb and the cdb databas
 
 There are also some test scripts for your exploration in the CDB_Database directory which are described in notes-cdb.txt in that directory.
 
-Ready the powerdns generic protobuf server by generating dnsmessage_pb2.py in pdns/contrib/ by following the instructions in the top couple lines of 
-pdns/contrib/ProtobufLogger.py:
-	run: protoc -I=../pdns/ --python_out=. ../pdns/dnsmessage.proto
 
 For extra speed in processing there is a special version with no console text output located in: pdns/zzz-gca-example/ProtobufServerAlt
 

@@ -91,7 +91,7 @@ bool bStat = false;
         break;
     }
 
-  if(nc->init(uMaxEntries, CACHE_MODE::MODE_ALL) == true) {
+  if(nc->init(uMaxEntries, iCacheMode) == true) {
     if(iDebug > 0) {
       printf("DEBUG DEBUG DEBUG - DNSDistNamedCache()::init() - init nc object with max entries: %lu \n", uMaxEntries);
     }
