@@ -55,6 +55,7 @@ public:
   DNSDistNamedCache(const std::string& fileName, const std::string& strReqType, const std::string& strReqMode, size_t maxEntries, int iDebug=0);
   ~DNSDistNamedCache();
   bool init(const std::string& fileName, const std::string& strReqType, const std::string& strReqMode, size_t maxEntries, int iDebug=0);
+  bool close(void);
   uint64_t getMaxEntries();
   std::string   getFileName();
   int getErrNum();

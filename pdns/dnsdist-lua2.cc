@@ -36,6 +36,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sstream>
 
 #include "dnsdist-lua.hh"
 
@@ -739,9 +740,6 @@ void moreLua(bool client)
 //
 //      closeNamedCache() - close a named cache, creates it if doesn't exist.
 //                          Used to free up resources used by a no longer needed cache
-//      swapNamedCaches(strCacheNameA, strCacheNameB) - swap the two named caches.
-//                          Either named cache will be created if it doesn't exist.
-//                        - example: swapNamedCaches("xxx", "yyy")
 //      reloadNamedCache([strCacheNameA], [maxEntries])
 //                        - parameters:
 //                          [strCacheName] - named cache to reload - else "default"
@@ -766,12 +764,6 @@ void moreLua(bool client)
 //      wasFileOpenedOK()  - return true if cdb file was opened OK
 //                         - example:
 //                               print(getNamedCache("xxx"):isFileOpen())
-//      getErrNum()        - return error message number (errno, from last i/o operation)
-//                         - example:
-//                               print(getNamedCache("xxx"):getErrNum())
-//      getErrMsg()        - return error message text
-//                         - example:
-//                               print(getNamedCache("xxx"):getErrMsg())
 //      loadFromCDB()      - (re)initialize a new cache entirely into memory
 //                         - parameters:
 //                               strCacheName - cdb file path name to use
@@ -790,11 +782,6 @@ void moreLua(bool client)
 //                         - examples:
 //                              loadFromCDB("xxx.cdb", 200000, "cdb")
 //                              loadFromCDB("xxx.cdb")  -- mode defaults to cdb, maxEntries to 100000
-//      getNamedCacheReasonText() - get reason text given string number - for debugging
-//                         - parameters:
-//                              strReason - 'integer' string from QTag field reason
-//                         - example:
-//                              getNamedCacheReasonText(tResult.reason)
 //      lookup()          - use string with dns name & return lua readable table
 //                         - parameters:
 //                              strQuery -  string to lookup without extra period at end of query string
@@ -805,13 +792,6 @@ void moreLua(bool client)
 //                                  found - one character string indicating if data found or not
 //                                          "T" - found with data
 //                                          "F" - not found, OR found without data
-//                                  reason - 'integer' value as string:
-//                                          CACHE_HIT::NOT_READY         - -1 (cache not read yet)
-//                                          CACHE_HIT::HIT_NONE          -  0 (match not found)
-//                                          CACHE_HIT::HIT_CDB           -  1 (match found in cdb file, data field not empty)
-//                                          CACHE_HIT::HIT_CACHE         -  2 (match found in cache, data field not empty)
-//                                          CACHE_HIT::HIT_CACHE_NO_DATA -  3 (match found in cache, empty data field)
-//                                          CACHE_HIT::HIT_CDB_NO_DATA   -  4 (match found in cdb file, empty data field)
 //                                  data - string from cdb table match
 //      lookupQ()          - use DNSQuestion & return results in lua readable table and the internal DNSQuestion QTag object.
 //                         - parameters:
@@ -823,15 +803,14 @@ void moreLua(bool client)
 //                                  found - one character string indicating if data found or not
 //                                          "T" - found with data
 //                                          "F" - not found, OR found without data
-//                                  reason - 'integer' value as string:
-//                                          CACHE_HIT::NOT_READY         - -1 (cache not read yet)
-//                                          CACHE_HIT::HIT_NONE          -  0 (match not found)
-//                                          CACHE_HIT::HIT_CDB           -  1 (match found in cdb file, data field not empty)
-//                                          CACHE_HIT::HIT_CACHE         -  2 (match found in cache, data field not empty)
-//                                          CACHE_HIT::HIT_CACHE_NO_DATA -  3 (match found in cache, empty data field)
-//                                          CACHE_HIT::HIT_CDB_NO_DATA   -  4 (match found in cdb file, empty data field)
 //                                  data - string from cdb table match
-
+//  Debugging functions:
+//      getErrNum()        - return error message number (errno, from last i/o operation)
+//                         - example:
+//                               print(getNamedCache("xxx"):getErrNum())
+//      getErrMsg()        - return error message text
+//                         - example:
+//                               print(getNamedCache("xxx"):getErrMsg())
 // ----------------------------------------------------------------------------
 
 
@@ -877,10 +856,15 @@ void moreLua(bool client)
 // ----------------------------------------------------------------------------
   g_lua.writeFunction("newNamedCache", [](const boost::optional<std::string> cacheName) {
       setLuaSideEffect();
-      std::string strCacheName ="default";
+      std::string strCacheName ="";
       if(cacheName) {
         strCacheName = *cacheName;
       }
+      if(strCacheName.length() == 0) {
+          g_outputBuffer="Error creating new named cache, no name supplied.";
+	      errlog("Error creating new named cache, no name supplied");
+	      return;
+        }
       auto localPools = g_namedCaches.getCopy();
       std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, strCacheName);
       g_namedCaches.setState(localPools);
@@ -893,46 +877,42 @@ void moreLua(bool client)
 // ----------------------------------------------------------------------------
   g_lua.writeFunction("closeNamedCache", [](const boost::optional<std::string> cacheName) {
       setLuaSideEffect();
-      std::string strCacheName ="default";
+      std::string strCacheName ="";
       if(cacheName) {
         strCacheName = *cacheName;
       }
+      if(strCacheName.length() == 0) {
+          g_outputBuffer="Error closing named cache, no name supplied.";
+	      errlog("Error closing named cache, no name supplied");
+	      return;
+        }
       auto localPools = g_namedCaches.getCopy();
       std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, strCacheName);
-      pool->namedCache->init("", "", "", 0);       // remove resources from the 'temp' named cache
+      pool->namedCache->close();       // remove resources from the 'temp' named cache
       g_namedCaches.setState(localPools);
     });
 
-
-// ----------------------------------------------------------------------------
-// swapNamedCaches() - swap between two named caches, doesn't return pointer
-//                   - example: swapNamedCaches("xxx", "yyy")
-// ----------------------------------------------------------------------------
-  g_lua.writeFunction("swapNamedCaches", [](const std::string& cacheNameA, const std::string& cacheNameB) {
-      setLuaSideEffect();
-      auto localPools = g_namedCaches.getCopy();
-      std::shared_ptr<NamedCacheX> entryCacheA = createNamedCacheIfNotExists(localPools, cacheNameA);
-      std::shared_ptr<NamedCacheX> entryCacheB = createNamedCacheIfNotExists(localPools, cacheNameB);
-      std::shared_ptr<DNSDistNamedCache> namedCacheTemp = entryCacheA->namedCache;
-      entryCacheA->namedCache = entryCacheB->namedCache;
-      entryCacheB->namedCache = namedCacheTemp;
-      g_namedCaches.setState(localPools);
-    });
 
 // ----------------------------------------------------------------------------
 // reloadNamedCache() - reload a named caches, doesn't return pointer
 //                   - parameters:
-//                     [strCacheName] - named cache to reload - else "default"
+//                     [strCacheName] - named cache to reload
 //                     [maxEntries] - maxEntries if it is going to be changed, only works if "bindToCDB" type named cache.
 //                   - example:reloadNamedCache("xxx")
 // ----------------------------------------------------------------------------
   g_lua.writeFunction("reloadNamedCache", [](const boost::optional<std::string> cacheName, boost::optional<int> maxEntries) {
       setLuaSideEffect();
       auto localPools = g_namedCaches.getCopy();
-      std::string strCacheNameA = "default";
+      std::string strCacheNameA = "";
       if(cacheName) {
         strCacheNameA = *cacheName;
       }
+      if(strCacheNameA.length() == 0) {
+          g_outputBuffer="Error reloading named cache, no name supplied.";
+	      errlog("Error reloading named cache, no name supplied");
+	      return;
+        }
+
       std::string strCacheNameB = "----4rld";
       std::shared_ptr<NamedCacheX> entryCacheA = createNamedCacheIfNotExists(localPools, strCacheNameA);
       std::shared_ptr<NamedCacheX> entryCacheB = createNamedCacheIfNotExists(localPools, strCacheNameB);
@@ -950,9 +930,13 @@ void moreLua(bool client)
         std::shared_ptr<DNSDistNamedCache> namedCacheTemp = entryCacheA->namedCache;
         entryCacheA->namedCache = entryCacheB->namedCache;
         entryCacheB->namedCache = namedCacheTemp;
-        entryCacheB->namedCache->init("", "", "", 0);       // remove resources from the 'temp' named cache
+        entryCacheB->namedCache->close();       // remove resources from the 'temp' named cache
       } else {
-        printf("ERROR! - could not reload named cache %s  -> %s (%d) \n", strFileNameA.c_str(), entryCacheB->namedCache->getErrMsg().c_str(), entryCacheB->namedCache->getErrNum());
+        std::stringstream err;
+        err << "Failed to reload named cache " << strFileNameA << "  -> " << entryCacheB->namedCache->getErrMsg() << "(" << entryCacheB->namedCache->getErrNum() << ")" << endl;
+        string outstr = err.str();
+        g_outputBuffer=outstr;
+	    errlog(outstr.c_str());
       }
 
       g_namedCaches.setState(localPools);
@@ -972,6 +956,11 @@ void moreLua(bool client)
       if(cacheName) {
         strCacheName = *cacheName;
       }
+      if(strCacheName.length() == 0) {
+          g_outputBuffer="Error getting named cache, no name supplied.";
+	      errlog("Error getting named cache, no name supplied");
+	      return std::make_shared<NamedCacheX>();
+        }
       if (client) {
           return std::make_shared<NamedCacheX>();
       }
@@ -1186,37 +1175,6 @@ void moreLua(bool client)
         return(bStat);
     });
 
-// ----------------------------------------------------------------------------
-// getNamedCacheReasonText() - get reason text given string number - for debugging
-// ----------------------------------------------------------------------------
-    g_lua.writeFunction("getNamedCacheReasonText", [](const std::string& reason) {
-        std::string strReason;
-        int iReason =  std::stoi (reason,nullptr,0);
-        switch(iReason) {
-          case CACHE_HIT::HIT_NOT_READY:
-            strReason = "CACHE_HIT::HIT_NOT_READY";
-            break;
-          case CACHE_HIT::HIT_NONE:
-            strReason = "CACHE_HIT::HIT_NONE";
-            break;
-          case CACHE_HIT::HIT_CDB:
-            strReason = "CACHE_HIT::HIT_CDB";
-            break;
-          case CACHE_HIT::HIT_CACHE:
-            strReason = "CACHE_HIT::HIT_CACHE";
-            break;
-          case CACHE_HIT::HIT_CACHE_NO_DATA:
-            strReason = "CACHE_HIT::HIT_CACHE_NO_DATA";
-            break;
-          case CACHE_HIT::HIT_CDB_NO_DATA:
-            strReason = "CACHE_HIT::HIT_CDB_NO_DATA";
-            break;
-          default:
-            strReason = "???";
-            break;
-         }
-    return strReason;
-    });
 
 // ----------------------------------------------------------------------------
 // lookup - string as parameter, return string with contents of cdb, else empty string
@@ -1224,13 +1182,6 @@ void moreLua(bool client)
 //                  - return table withfields:
 //                      found - "T" - found with data
 //                              "F" - not found, OR found without data
-//                      reason - 'integer' value as string:
-//                               CACHE_HIT::NOT_READY         - -1 (cache not read yet)
-//                               CACHE_HIT::HIT_NONE          -  0 (match not found)
-//                               CACHE_HIT::HIT_CDB           -  1 (match found in cdb file, data field not empty)
-//                               CACHE_HIT::HIT_CACHE         -  2 (match found in cache, data field not empty)
-//                               CACHE_HIT::HIT_CACHE_NO_DATA -  3 (match found in cache, empty data field)
-//                               CACHE_HIT::HIT_CDB_NO_DATA   -  4 (match found in cdb file, empty data field)
 //                      data - string from cdb table match
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
@@ -1249,43 +1200,32 @@ void moreLua(bool client)
 
       std::string strRet;
       std::string strHit;
-      std::string strReason;
       iGotIt = nc->lookup(strQuery, strRet);
       switch(iGotIt) {
-        case CACHE_HIT::HIT_NOT_READY:
-          strHit    = "F";
-          strReason = "-1";
-          break;
         case CACHE_HIT::HIT_NONE:
           strHit    = "F";
-          strReason = "0";
           break;
         case CACHE_HIT::HIT_CDB:
           strHit    = "T";              // valid hit via reading from the cdb file
-          strReason = "1";
           break;
         case CACHE_HIT::HIT_CACHE:
           strHit    = "T";              // valid hit via the cache, with data found
-          strReason = "2";
           break;
         case CACHE_HIT::HIT_CACHE_NO_DATA:
           strHit    = "F";
-          strReason = "3";
           break;
         case CACHE_HIT::HIT_CDB_NO_DATA:
           strHit    = "F";
-          strReason = "4";
           break;
         default:
           strHit    = "F";
-          strReason = -2;
           break;
         }
 
 
     tableResult.insert({"data", strRet});
     tableResult.insert({"found", strHit});
-    tableResult.insert({"reason", strReason});
+//    tableResult.insert({"reason", strReason});
 
     }
     return tableResult;
@@ -1299,13 +1239,6 @@ void moreLua(bool client)
 //                  DNSQuestion QTag fields:
 //                      found - "T" - found with data
 //                              "F" - not found, OR found without data
-//                      reason - 'integer' value as string:
-//                               CACHE_HIT::NOT_READY         - -1 (cache not read yet)
-//                               CACHE_HIT::HIT_NONE          -  0 (match not found)
-//                               CACHE_HIT::HIT_CDB           -  1 (match found in cdb file, data field not empty)
-//                               CACHE_HIT::HIT_CACHE         -  2 (match found in cache, data field not empty)
-//                               CACHE_HIT::HIT_CACHE_NO_DATA -  3 (match found in cache, empty data field)
-//                               CACHE_HIT::HIT_CDB_NO_DATA   -  4 (match found in cdb file, empty data field)
 //                      data - string from cdb table match
 // ----------------------------------------------------------------------------
 
@@ -1323,36 +1256,25 @@ void moreLua(bool client)
 
       std::string strRet;
       std::string strHit;
-      std::string strReason;
       iGotIt = nc->lookup(strQuery, strRet);
       switch(iGotIt) {
-        case CACHE_HIT::HIT_NOT_READY:
-          strHit    = "F";
-          strReason = "-1";
-          break;
         case CACHE_HIT::HIT_NONE:
           strHit    = "F";
-          strReason = "0";
           break;
         case CACHE_HIT::HIT_CDB:
           strHit    = "T";              // valid hit via reading from the cdb file
-          strReason = "1";
           break;
         case CACHE_HIT::HIT_CACHE:
           strHit    = "T";              // valid hit via the cache, with data found
-          strReason = "2";
           break;
         case CACHE_HIT::HIT_CACHE_NO_DATA:
           strHit    = "F";
-          strReason = "3";
           break;
         case CACHE_HIT::HIT_CDB_NO_DATA:
           strHit    = "F";
-          strReason = "4";
           break;
         default:
           strHit    = "F";
-          strReason = -2;
           break;
         }
 
@@ -1362,11 +1284,9 @@ void moreLua(bool client)
 
      dq->qTag->add("data", strRet);
      dq->qTag->add("found", strHit);
-     dq->qTag->add("reason", strReason);
 
     tableResult.insert({"data", strRet});
     tableResult.insert({"found", strHit});
-    tableResult.insert({"reason", strReason});
 
     }
     return tableResult;
