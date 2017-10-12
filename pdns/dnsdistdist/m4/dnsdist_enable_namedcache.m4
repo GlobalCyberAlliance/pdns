@@ -10,5 +10,6 @@ AC_DEFUN([DNSDIST_ENABLE_NAMEDCACHE], [
 
   AM_COND_IF([NAMEDCACHE], [
       PDNS_CHECK_CDB
+      AC_DEFINE([HAVE_NAMEDCACHE], [1], [Define to 1 if you have namedCache & libtinycdb])
   ])
 ])
