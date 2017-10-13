@@ -31,6 +31,7 @@
 #include <map>
 #include <fstream>
 #include <boost/logic/tribool.hpp>
+#include <boost/variant.hpp>
 #include "statnode.hh"
 #include <sys/types.h>
 #include <dirent.h>
@@ -789,9 +790,9 @@ void moreLua(bool client)
 //                              iResult = getNamedCache("xxx"):lookup("bad.example.com")
 //                         - return lua table with QTag fields:
 //                              fields:
-//                                  found - one character string indicating if data found or not
-//                                          "T" - found with data
-//                                          "F" - not found, OR found without data
+//                                  found - boolean indicating if data found or not
+//                                          true - found with data
+//                                          false - not found, OR found without data
 //                                  data - string from cdb table match
 //      lookupQ()          - use DNSQuestion & return results in lua readable table and the internal DNSQuestion QTag object.
 //                         - parameters:
@@ -800,9 +801,9 @@ void moreLua(bool client)
 //                              iResult = getNamedCache("xxx"):lookupQ(dq)
 //                         - return lua table with QTag fields:
 //                              DNSQuestion QTag fields:
-//                                  found - one character string indicating if data found or not
-//                                          "T" - found with data
-//                                          "F" - not found, OR found without data
+//                                  found - boolean indicating if data found or not
+//                                          true - found with data
+//                                          false - not found, OR found without data
 //                                  data - string from cdb table match
 //  Debugging functions:
 //      getErrNum()        - return error message number (errno, from last i/o operation)
@@ -1180,14 +1181,14 @@ void moreLua(bool client)
 // lookup - string as parameter, return string with contents of cdb, else empty string
 //                  - example: iResult = getNamedCache("xxx"):lookupQ("bad.example.com")
 //                  - return table withfields:
-//                      found - "T" - found with data
-//                              "F" - not found, OR found without data
+//                      found - true - found with data
+//                              false - not found, OR found without data
 //                      data - string from cdb table match
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
-    g_lua.registerFunction<std::unordered_map<string, string>(std::shared_ptr<NamedCacheX>::*)(std::string)>("lookup", [](const std::shared_ptr<NamedCacheX> pool, const std::string& query) {
-    std::unordered_map<string, string> tableResult;
+    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool> >(std::shared_ptr<NamedCacheX>::*)(std::string)>("lookup", [](const std::shared_ptr<NamedCacheX> pool, const std::string& query) {
+    std::unordered_map<string, boost::variant<string, bool> > tableResult;
     int iGotIt = 0;
     if (pool->namedCache) {
       std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
@@ -1199,32 +1200,32 @@ void moreLua(bool client)
         }
 
       std::string strRet;
-      std::string strHit;
+      bool hit;
       iGotIt = nc->lookup(strQuery, strRet);
       switch(iGotIt) {
         case CACHE_HIT::HIT_NONE:
-          strHit    = "F";
+            hit    = false;
           break;
         case CACHE_HIT::HIT_CDB:
-          strHit    = "T";              // valid hit via reading from the cdb file
+            hit    = true;              // valid hit via reading from the cdb file
           break;
         case CACHE_HIT::HIT_CACHE:
-          strHit    = "T";              // valid hit via the cache, with data found
+            hit    = true;              // valid hit via the cache, with data found
           break;
         case CACHE_HIT::HIT_CACHE_NO_DATA:
-          strHit    = "F";
+            hit    = false;
           break;
         case CACHE_HIT::HIT_CDB_NO_DATA:
-          strHit    = "F";
+            hit    = false;
           break;
         default:
-          strHit    = "F";
+            hit    = false;
           break;
         }
 
 
     tableResult.insert({"data", strRet});
-    tableResult.insert({"found", strHit});
+    tableResult.insert({"found", hit});
 //    tableResult.insert({"reason", strReason});
 
     }
@@ -1242,8 +1243,8 @@ void moreLua(bool client)
 //                      data - string from cdb table match
 // ----------------------------------------------------------------------------
 
-    g_lua.registerFunction<std::unordered_map<string, string>(std::shared_ptr<NamedCacheX>::*)(DNSQuestion *dq)>("lookupQ", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion *dq) {
-    std::unordered_map<string, string> tableResult;
+    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool> >(std::shared_ptr<NamedCacheX>::*)(DNSQuestion *dq)>("lookupQ", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion *dq) {
+    std::unordered_map<string, boost::variant<string, bool> > tableResult;
     int iGotIt = 0;
     if (pool->namedCache) {
       std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
@@ -1255,26 +1256,26 @@ void moreLua(bool client)
         }
 
       std::string strRet;
-      std::string strHit;
+      bool hit;
       iGotIt = nc->lookup(strQuery, strRet);
       switch(iGotIt) {
         case CACHE_HIT::HIT_NONE:
-          strHit    = "F";
+          hit = false;
           break;
         case CACHE_HIT::HIT_CDB:
-          strHit    = "T";              // valid hit via reading from the cdb file
+          hit = true;              // valid hit via reading from the cdb file
           break;
         case CACHE_HIT::HIT_CACHE:
-          strHit    = "T";              // valid hit via the cache, with data found
+          hit = true;              // valid hit via the cache, with data found
           break;
         case CACHE_HIT::HIT_CACHE_NO_DATA:
-          strHit    = "F";
+          hit = false;
           break;
         case CACHE_HIT::HIT_CDB_NO_DATA:
-          strHit    = "F";
+          hit = false;
           break;
         default:
-          strHit    = "F";
+          hit = false;
           break;
         }
 
@@ -1283,10 +1284,10 @@ void moreLua(bool client)
       }
 
      dq->qTag->add("data", strRet);
-     dq->qTag->add("found", strHit);
+     dq->qTag->add("found", std::string(hit ? "T" : "F"));
 
     tableResult.insert({"data", strRet});
-    tableResult.insert({"found", strHit});
+    tableResult.insert({"found", hit});
 
     }
     return tableResult;
@@ -1365,6 +1366,7 @@ void moreLua(bool client)
           cache->expungeByName(dname, qtype ? *qtype : QType::ANY, suffixMatch ? *suffixMatch : false);
         }
       });
+	
     g_lua.registerFunction<void(std::shared_ptr<DNSDistPacketCache>::*)()>("printStats", [](const std::shared_ptr<DNSDistPacketCache> cache) {
         if (cache) {
           g_outputBuffer="Entries: " + std::to_string(cache->getEntriesCount()) + "/" + std::to_string(cache->getMaxEntries()) + "\n";
