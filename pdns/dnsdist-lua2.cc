@@ -964,8 +964,6 @@ void moreLua(bool client)
         name = *cacheName;
       }
       if (name.length() == 0) {
-        g_outputBuffer = "You must specify a cache name\n";
-        errlog("You must specify a cache name");
         throw std::runtime_error("You must specify a cache name");
       }
 
