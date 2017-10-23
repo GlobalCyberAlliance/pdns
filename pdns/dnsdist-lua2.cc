@@ -1376,10 +1376,10 @@ void moreLua(bool client)
      * This method is very similar to NamedCacheX::lookup(), except that it
      * may also append a maximum of two entries to the DNSQuestion.QTag field:
      *
-     * 		"nc_found"
+     * 		"found"
      * 			A string indicating whether or not there was an entry
      * 			found in the named cache "yes", or "no" otherwise.
-     * 		"nc_data"
+     * 		"data"
      * 			Any associated data, if nc_found == "yes".
      */
     g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool> >(std::shared_ptr<NamedCacheX>::*)(DNSQuestion *dq)>("lookupQ", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion *dq) {
@@ -1412,10 +1412,56 @@ void moreLua(bool client)
       dq->qTag = std::make_shared<QTag>();
     }
 
-    dq->qTag->add("nc_found", std::string(found ? "yes": "no"));
+    dq->qTag->add("found", std::string(found ? "yes": "no"));
     if (found) {
-      dq->qTag->add("nc_data", strRet);
+      dq->qTag->add("data", strRet);
     }
+    return tableResult;
+   });
+
+    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool> >(std::shared_ptr<NamedCacheX>::*)(DNSQuestion dq)>("lookupZ", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion dq) {
+    std::unordered_map<string, boost::variant<string, bool>> tableResult;
+//    printf("lookupZ - DEBUG DEBUG DEBUG #0 \n");
+
+    if (! (pool->namedCache)) {
+      return tableResult;
+    }
+    std::shared_ptr<DNSDistNamedCache> nc = pool->namedCache;
+
+
+//    printf("lookupZ - DEBUG DEBUG DEBUG #1 \n");
+
+    // Normalize the query, by converting it to lower-case, and remove the
+    // trailing period, if there is one.
+    std::string strQuery = toLower(dq.qname->toString());       // *****
+    if(strQuery.back() == '.') {
+      strQuery.pop_back();
+    }
+    if (strQuery.length() == 0) {
+      throw std::runtime_error("The DNS question's QNAME is a zero-length string");
+    }
+
+    std::string strRet;
+    int hitType = nc->lookup(strQuery, strRet);
+    bool found = !(hitType == CACHE_HIT::HIT_NONE);
+
+    tableResult.insert({"found", found});
+    tableResult.insert({"data", strRet});
+
+//    printf("lookupZ - DEBUG DEBUG DEBUG #2 \n");
+
+    // Make sure the DNSQuestion.QTag field is initialized, and add the
+    // qtags to the DNSQuestion.
+    if(dq.qTag == nullptr) {                // *****
+      dq.qTag = std::make_shared<QTag>();   // *****
+    }
+
+    dq.qTag->add("found", std::string(found ? "yes": "no"));     // ****
+    if (found) {
+      dq.qTag->add("data", strRet);         // ****
+    }
+//    printf("lookupZ - DEBUG DEBUG DEBUG #3 \n");
+
     return tableResult;
    });
 
@@ -1544,6 +1590,31 @@ void moreLua(bool client)
 #endif
       });
 
+// ----------------------------------------------------------------------------
+// Seth - GCA - Experimental - 10/22/2017 - Ari's code
+// ----------------------------------------------------------------------------
+
+
+    g_lua.writeFunction("newDNSDistProtobufMessage", [](DNSQuestion *dq) {
+#ifdef HAVE_PROTOBUF
+            return std::shared_ptr<DNSDistProtoBufMessage>(new DNSDistProtoBufMessage(*dq));
+#else
+            throw std::runtime_error("Protobuf support is required to use newDNSDistProtobufMessage");
+#endif /* HAVE_PROTOBUF */
+      });
+
+    g_lua.writeFunction("remoteLog", [](std::shared_ptr<RemoteLogger> logger, std::shared_ptr<DNSDistProtoBufMessage> message) {
+            setLuaNoSideEffect();
+
+#ifdef HAVE_PROTOBUF
+            std::string data;
+            message->serialize(data);
+            logger->queueData(data);
+#else
+            throw std::runtime_error("Protobuf support is required to use remoteLog");
+#endif /* HAVE_PROTOBUF */
+
+      });
 
 // ----------------------------------------------------------------------------
 
