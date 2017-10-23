@@ -1267,7 +1267,8 @@ private:
 // ----------------------------------------------------------------------------
 // Seth - GCA - Experimental - 10/22/2017
 // ----------------------------------------------------------------------------
-class RemoteLogActionX : public DNSAction, public boost::noncopyable
+#ifdef TRASH
+class RemoteLogActionX_old : public DNSAction, public boost::noncopyable
 {
 public:
   RemoteLogActionX(std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<int(const DNSQuestion&, DNSDistProtoBufMessage*)> > alterFuncX): d_logger(logger), d_alterFuncX(alterFuncX)
@@ -1282,6 +1283,8 @@ public:
     {
       if (d_alterFuncX) {
         std::lock_guard<std::mutex> lock(g_luamutex);
+
+//        printf("DNSAction::Action operator() - DEBUG - DEBUG - DEBUG - dq->len: %d \n", dq->len);       // DEBU GDEBUG DEBUG
         iRetAction = (*d_alterFuncX)(*dq, &message);
       }
     }
@@ -1303,6 +1306,48 @@ private:
   boost::optional<std::function<int(const DNSQuestion&, DNSDistProtoBufMessage*)> > d_alterFuncX;       // returns int now!
 };
 
+#endif
+
+// ----------------------------------------------------------------------------
+// Seth - GCA - Experimental - 10/23/2017 - fixed version
+// ----------------------------------------------------------------------------
+class RemoteLogActionX : public DNSAction, public boost::noncopyable
+{
+public:
+  RemoteLogActionX(std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<int(DNSQuestion*, DNSDistProtoBufMessage*)> > alterFuncX): d_logger(logger), d_alterFuncX(alterFuncX)
+  {
+  }
+  DNSAction::Action operator()(DNSQuestion* dq, string* ruleresult) const override
+  {
+   int iRetAction = (int) DNSAction::Action::None;       // default action
+
+#ifdef HAVE_PROTOBUF
+    DNSDistProtoBufMessage message(*dq);
+    {
+      if (d_alterFuncX) {
+        std::lock_guard<std::mutex> lock(g_luamutex);
+
+//        printf("DNSAction::Action operator() - DEBUG - DEBUG - DEBUG - dq->len: %d \n", dq->len);       // DEBU GDEBUG DEBUG
+        iRetAction = (*d_alterFuncX)(dq, &message);
+      }
+    }
+    if(iRetAction == (int) DNSAction::Action::Nxdomain) {            // now only send out message if we havea Nxdomain!
+      std::string data;
+      message.serialize(data);
+      d_logger->queueData(data);
+    }
+
+#endif /* HAVE_PROTOBUF */
+    return (DNSAction::Action) iRetAction;
+  }
+  string toString() const override
+  {
+    return "remote logX to " + d_logger->toString();
+  }
+private:
+  std::shared_ptr<RemoteLogger> d_logger;
+  boost::optional<std::function<int(DNSQuestion*, DNSDistProtoBufMessage*)> > d_alterFuncX;       // returns int now!
+};
 
 // ----------------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-echo "dnsdist2-named-cache-test-3.sh - test dnsdist with named cache version test 3 - Ari's function"
+echo "dnsdist2-named-cache-test-3.sh - test dnsdist with named cache version test 3 - Ari's version"
 echo ""
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SLASH="/"

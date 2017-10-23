@@ -1419,7 +1419,11 @@ void moreLua(bool client)
     return tableResult;
    });
 
-    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool> >(std::shared_ptr<NamedCacheX>::*)(DNSQuestion dq)>("lookupZ", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion dq) {
+// ----------------------------------------------------------------------------
+// Seth - GCA - Experimental - 10/22/2017 - this version does NOT use pointer for DNSQuestion parameter --- used to debug problem with RemoteLogActionX
+// this code needs to go away and only use lookupQ
+// ----------------------------------------------------------------------------
+    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool> >(std::shared_ptr<NamedCacheX>::*)(DNSQuestion& dq)>("lookupZ", [](const std::shared_ptr<NamedCacheX> pool, DNSQuestion& dq) {
     std::unordered_map<string, boost::variant<string, bool>> tableResult;
 //    printf("lookupZ - DEBUG DEBUG DEBUG #0 \n");
 
@@ -1582,7 +1586,16 @@ void moreLua(bool client)
 // Seth - GCA - Experimental - 10/22/2017
 // ----------------------------------------------------------------------------
 
-    g_lua.writeFunction("RemoteLogActionX", [](std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<int(const DNSQuestion&, DNSDistProtoBufMessage*)> > alterFuncX) {
+#ifdef TRASH
+    g_lua.writeFunction("RemoteLogActionX_old", [](std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<int(const DNSQuestion&, DNSDistProtoBufMessage*)> > alterFuncX) {
+#ifdef HAVE_PROTOBUF
+        return std::shared_ptr<DNSAction>(new RemoteLogActionX(logger, alterFuncX));
+#else
+        throw std::runtime_error("Protobuf support is required to use RemoteLogActionX");
+#endif
+      });
+#endif
+    g_lua.writeFunction("RemoteLogActionX", [](std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<int(DNSQuestion*, DNSDistProtoBufMessage*)> > alterFuncX) {
 #ifdef HAVE_PROTOBUF
         return std::shared_ptr<DNSAction>(new RemoteLogActionX(logger, alterFuncX));
 #else
