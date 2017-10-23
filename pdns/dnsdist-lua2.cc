@@ -69,6 +69,76 @@ void resetLuaSideEffect()
   g_noLuaSideEffect = boost::logic::indeterminate;
 }
 
+// ----------------------------------------------------------------------------
+// GCA - Seth - 10/20/2017 Experimental.......
+// ----------------------------------------------------------------------------
+
+void namedCacheReloadThread(std::shared_ptr<NamedCacheX> entryCacheA, const std::string& strCacheNameA,  boost::optional<int> maxEntries)
+{
+
+//  warnlog("namedCacheReload start - Cache Name: %s   Max Entries: %s", strCacheNameA.c_str(), maxEntries?std::to_string((int) *maxEntries):"all");
+
+  auto start = std::chrono::system_clock::now();
+  std::time_t startTime = std::chrono::system_clock::to_time_t(start);
+  std::string strStartTime;
+  strStartTime.append(std::ctime(&startTime), 19);
+//  warnlog("namedCacheReloadThread start - %s", strStartTime.c_str());
+
+
+
+  std::string strFileNameA = entryCacheA->namedCache->getFileName();
+  std::string strCacheTypeA = entryCacheA->namedCache->getCacheTypeText();
+  std::string strCacheModeA = entryCacheA->namedCache->getCacheModeText();
+  int iMaxEntriesA = entryCacheA->namedCache->getMaxEntries();
+  if(maxEntries) {
+    iMaxEntriesA = *maxEntries;
+  }
+
+
+  auto namedCacheList = g_namedCaches.getCopy();
+  std::string strCacheNameB = g_namedCacheTempPrefix;
+  std::stringstream stream;
+  stream << std::hex << g_namedCacheTempFileCount++;
+  strCacheNameB += stream.str();                // unique temporary named cache name for loading in bkg
+  std::shared_ptr<NamedCacheX> entryCacheB = createNamedCacheIfNotExists(namedCacheList, strCacheNameB);
+  g_namedCaches.setState(namedCacheList);
+
+
+
+  bool bStat = entryCacheB->namedCache->init(strFileNameA, strCacheTypeA, strCacheModeA , iMaxEntriesA, false);
+  if(bStat == true) {
+    warnlog("namedCacheReload - loading - Cache Name: %s   Max Entries: %s   Time: %s ", strCacheNameA.c_str(), maxEntries?std::to_string((int) *maxEntries):"all", strStartTime.c_str());
+    std::lock_guard<std::mutex> lock(g_luamutex);                                       // lua lock till end of 'if'
+    std::shared_ptr<DNSDistNamedCache> namedCacheTemp = entryCacheA->namedCache;        // get ptr to 'A'
+    entryCacheA->namedCache = entryCacheB->namedCache;                                  // have 'A' pt to new 'B'
+    entryCacheB->namedCache = namedCacheTemp;                                           // have 'B' pt to old 'A'
+    entryCacheB->namedCache->close();                                                   // remove resources from the 'temp' named cache
+    auto namedCacheList2 = g_namedCaches.getCopy();
+    deleteNamedCacheEntry(namedCacheList2,strCacheNameB);
+    g_namedCaches.setState(namedCacheList2);
+  } else {
+      std::stringstream err;
+      err << "Failed to reload named cache " << strFileNameA << "  -> " << entryCacheB->namedCache->getErrMsg() << "(" << entryCacheB->namedCache->getErrNum() << ")" << endl;
+      string outstr = err.str();
+	  errlog(outstr.c_str());
+    }
+
+
+
+  auto end = std::chrono::system_clock::now();
+  std::time_t endTime = std::chrono::system_clock::to_time_t(end);
+  std::string strEndTime;
+  strEndTime.append(std::ctime(&endTime), 19);
+
+//  warnlog("namedCacheReloadThread iMaxEntriesA: %d ", iMaxEntriesA);
+  auto millSec = std::chrono::duration_cast<std::chrono::milliseconds> (end-start);
+  warnlog("namedCacheReload - finished - Cache Name: %s   Max Entries: %d   Elapsed ms: %d ", strCacheNameA.c_str(), iMaxEntriesA, millSec.count());
+
+
+}
+
+// ----------------------------------------------------------------------------
+
 map<ComboAddress,int> filterScore(const map<ComboAddress, unsigned int,ComboAddress::addressOnlyLessThan >& counts, 
 				  double delta, int rate)
 {
@@ -732,20 +802,31 @@ void moreLua(bool client)
 // new lua functions - 10/10/2017
 //
 // NamedCacheX general methods:
-//      newNamedCache([strCacheName]) - create a named cache if it doesn't exist
-//                         - parameters:
+//     newNamedCache([strCacheName]) - create a named cache if it doesn't exist
+//                        - parameters:
 //                               strCacheName - cache name, defaults to "default"
 //                        - example: addNamedCache("yyy")
-//      showNamedCaches() - display list of named caches on terminal
+//     showNamedCaches()  - display list of named caches on terminal
 //                        - example: showNamedCaches()
 //
-//      closeNamedCache() - close a named cache, creates it if doesn't exist.
+//     closeNamedCache() - close a named cache, creates it if doesn't exist.
 //                          Used to free up resources used by a no longer needed cache
-//      reloadNamedCache([strCacheNameA], [maxEntries])
+//                          Unlike deleteNamedCache() this function will leave a
+//                          working empty named cache
+//                        - example: closeNamedCache("yyy")
+//     deleteNamedCache() - delete a named cache
+//                        - example: deleteNamedCache("yyy")
+//     reloadNamedCache([strCacheNameA], [maxEntries])
 //                        - parameters:
 //                          [strCacheName] - named cache to reload - else "default"
 //                          [maxEntries] - maxEntries if it is going to be changed, only works if "bindToCDB" type named cache.
 //                        - example:reloadNamedCache("xxx")
+// ----------------------------------------------------------------------------
+//  Experimental - 10/20/2017 - Seth
+//
+//      reloadNamedCacheBkg()        - reload in background
+//
+// ----------------------------------------------------------------------------
 //
 // NamedCacheX methods:
 //      getNamedCache([strCacheName]) - get named cache ptr, create if not exist
@@ -815,6 +896,7 @@ void moreLua(bool client)
 // ----------------------------------------------------------------------------
 
 
+
 // ----------------------------------------------------------------------------
 // showNamedCaches() - show all the named caches
 //                   - example: showNamedCaches()
@@ -866,6 +948,12 @@ void moreLua(bool client)
 	      errlog("Error creating new named cache, no name supplied");
 	      return;
         }
+      if(boost::starts_with(strCacheName, g_namedCacheTempPrefix)) {
+          g_outputBuffer="Error creating new named cache, don't use named cache temp prefix.";
+	      errlog("Error creating new named cache, don't use named cache temp prefix.");
+	      return;
+        }
+
       auto localPools = g_namedCaches.getCopy();
       std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, strCacheName);
       g_namedCaches.setState(localPools);
@@ -874,7 +962,9 @@ void moreLua(bool client)
 // ----------------------------------------------------------------------------
 // closeNamedCache() - close a named cache, does the same thing as addNamedCache
 //                     is used to free up resources used by a no longer needed cache
-//                 - example: closeNamedCache("yyy")
+//                     unlike deleteNamedCache() this function will leave a
+//                     working empty named cache
+//                   - example: closeNamedCache("yyy")
 // ----------------------------------------------------------------------------
   g_lua.writeFunction("closeNamedCache", [](const boost::optional<std::string> cacheName) {
       setLuaSideEffect();
@@ -887,17 +977,26 @@ void moreLua(bool client)
 	      errlog("Error closing named cache, no name supplied");
 	      return;
         }
-      auto localPools = g_namedCaches.getCopy();
-      std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(localPools, strCacheName);
+      if(boost::starts_with(strCacheName, g_namedCacheTempPrefix)) {
+          g_outputBuffer="Error closing named cache, don't use named cache temp prefix.";
+	      errlog("Error closing named cache, don't use named cache temp prefix.");
+	      return;
+        }
+
+      auto namedCacheList = g_namedCaches.getCopy();
+      std::shared_ptr<NamedCacheX> pool = createNamedCacheIfNotExists(namedCacheList, strCacheName);
       pool->namedCache->close();       // remove resources from the 'temp' named cache
-      g_namedCaches.setState(localPools);
+      g_namedCaches.setState(namedCacheList);
     });
 
 
+
 // ----------------------------------------------------------------------------
-// reloadNamedCache() - reload a named caches, doesn't return pointer
+// GCA - Seth - 10/21/2017 Experimental.......
+// ----------------------------------------------------------------------------
+// reloadNamedCache() - reload a named caches, doesn't return pointer - in background
 //                   - parameters:
-//                     [strCacheName] - named cache to reload
+//                     strCacheName - named cache to reload
 //                     [maxEntries] - maxEntries if it is going to be changed, only works if "bindToCDB" type named cache.
 //                   - example:reloadNamedCache("xxx")
 // ----------------------------------------------------------------------------
@@ -913,35 +1012,49 @@ void moreLua(bool client)
 	      errlog("Error reloading named cache, no name supplied");
 	      return;
         }
+      if(boost::starts_with(strCacheNameA, g_namedCacheTempPrefix)) {
+          g_outputBuffer="Error reloading named cache, don't use named cache temp prefix.";
+	      errlog("Error reloading named cache, don't use named cache temp prefix.");
+	      return;
+        }
 
-      std::string strCacheNameB = "----4rld";
       std::shared_ptr<NamedCacheX> entryCacheA = createNamedCacheIfNotExists(localPools, strCacheNameA);
-      std::shared_ptr<NamedCacheX> entryCacheB = createNamedCacheIfNotExists(localPools, strCacheNameB);
 
-      std::string strFileNameA = entryCacheA->namedCache->getFileName();
-      std::string strCacheTypeA = entryCacheA->namedCache->getCacheTypeText();
-      std::string strCacheModeA = entryCacheA->namedCache->getCacheModeText();
-      int iMaxEntriesA = entryCacheA->namedCache->getMaxEntries();
-      if(maxEntries) {
-        iMaxEntriesA = *maxEntries;
-      }
 
-      bool bStat = entryCacheB->namedCache->init(strFileNameA, strCacheTypeA, strCacheModeA , iMaxEntriesA, false);
-      if(bStat == true) {
-        std::shared_ptr<DNSDistNamedCache> namedCacheTemp = entryCacheA->namedCache;
-        entryCacheA->namedCache = entryCacheB->namedCache;
-        entryCacheB->namedCache = namedCacheTemp;
-        entryCacheB->namedCache->close();       // remove resources from the 'temp' named cache
-      } else {
-        std::stringstream err;
-        err << "Failed to reload named cache " << strFileNameA << "  -> " << entryCacheB->namedCache->getErrMsg() << "(" << entryCacheB->namedCache->getErrNum() << ")" << endl;
-        string outstr = err.str();
-        g_outputBuffer=outstr;
-	    errlog(outstr.c_str());
-      }
 
-      g_namedCaches.setState(localPools);
+      std::thread t(namedCacheReloadThread, entryCacheA, strCacheNameA, maxEntries);
+	  t.detach();
+
     });
+
+// ----------------------------------------------------------------------------
+// GCA - Seth - 10/22/2017 Experimental.......
+// ----------------------------------------------------------------------------
+// deleteNamedCache() - delete a named cache
+//                    - example: deleteNamedCache("yyy")
+// ----------------------------------------------------------------------------
+  g_lua.writeFunction("deleteNamedCache", [](const boost::optional<std::string> cacheName) {
+      setLuaSideEffect();
+      std::string strCacheName ="";
+      if(cacheName) {
+        strCacheName = *cacheName;
+      }
+      if(strCacheName.length() == 0) {
+          g_outputBuffer="Error deleting named cache, no name supplied.";
+	      errlog("Error deleteing named cache, no name supplied");
+	      return;
+        }
+      if(boost::starts_with(strCacheName, g_namedCacheTempPrefix)) {
+          g_outputBuffer="Error deleting new named cache, don't use named cache temp prefix.";
+	      errlog("Error deleting new named cache, don't use named cache temp prefix.");
+	      return;
+        }
+      auto namedCacheList = g_namedCaches.getCopy();
+      deleteNamedCacheEntry(namedCacheList, strCacheName);
+      g_namedCaches.setState(namedCacheList);
+    });
+
+
 // ----------------------------------------------------------------------------
 // NamedCacheX general methods
 // ----------------------------------------------------------------------------
@@ -966,14 +1079,17 @@ void moreLua(bool client)
       if (name.length() == 0) {
         throw std::runtime_error("You must specify a cache name");
       }
+      if(boost::starts_with(name, g_namedCacheTempPrefix)) {
+        throw std::runtime_error("Error getting named cache, don't use named cache temp prefix.");
+      }
 
       if (client) {
         return std::make_shared<NamedCacheX>();
       }
 
-      auto localPools = g_namedCaches.getCopy();
-      std::shared_ptr<NamedCacheX> nc = createNamedCacheIfNotExists(localPools, name);
-      g_namedCaches.setState(localPools);
+      auto namedCacheList = g_namedCaches.getCopy();
+      std::shared_ptr<NamedCacheX> nc = createNamedCacheIfNotExists(namedCacheList, name);
+      g_namedCaches.setState(namedCacheList);
       return nc;
     });
 
@@ -1415,6 +1531,22 @@ void moreLua(bool client)
         throw std::runtime_error("Protobuf support is required to use RemoteLogAction");
 #endif
       });
+
+// ----------------------------------------------------------------------------
+// Seth - GCA - Experimental - 10/22/2017
+// ----------------------------------------------------------------------------
+
+    g_lua.writeFunction("RemoteLogActionX", [](std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<int(const DNSQuestion&, DNSDistProtoBufMessage*)> > alterFuncX) {
+#ifdef HAVE_PROTOBUF
+        return std::shared_ptr<DNSAction>(new RemoteLogActionX(logger, alterFuncX));
+#else
+        throw std::runtime_error("Protobuf support is required to use RemoteLogActionX");
+#endif
+      });
+
+
+// ----------------------------------------------------------------------------
+
     g_lua.writeFunction("RemoteLogResponseAction", [](std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<void(const DNSResponse&, DNSDistProtoBufMessage*)> > alterFunc, boost::optional<bool> includeCNAME) {
 #ifdef HAVE_PROTOBUF
         return std::shared_ptr<DNSResponseAction>(new RemoteLogResponseAction(logger, alterFunc, includeCNAME ? *includeCNAME : false));

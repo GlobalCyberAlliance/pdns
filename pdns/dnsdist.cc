@@ -97,6 +97,10 @@ GlobalStateHolder<pools_t> g_pools;
 
 GlobalStateHolder<namedCaches_t> g_namedCaches;
 
+std::atomic<std::uint16_t> g_namedCacheTempFileCount;
+
+std::string g_namedCacheTempPrefix = "-4rld";
+
 #endif
 
 // ----------------------------------------------------------------------------
@@ -370,21 +374,36 @@ int copyQTag(DNSResponse &dr, const std::shared_ptr<QTag> qTagData)
 
 #ifdef HAVE_NAMEDCACHE
 
-std::shared_ptr<NamedCacheX> createNamedCacheIfNotExists(namedCaches_t& namedCaches, const string& poolName)
-{
-  std::shared_ptr<NamedCacheX> pool;
-  namedCaches_t::iterator it = namedCaches.find(poolName);
-  if (it != namedCaches.end()) {
-    pool = it->second;
-  } else {
-      if (!poolName.empty())
-        vinfolog("Creating named cache %s", poolName);
-      pool = std::make_shared<NamedCacheX>();
 
-      pool->namedCache = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, false);       // last var is debug switch
-      namedCaches.insert(std::pair<std::string,std::shared_ptr<NamedCacheX> >(poolName, pool));
+std::shared_ptr<NamedCacheX> createNamedCacheIfNotExists(namedCaches_t& namedCachesTable, const string& findCacheName)
+{
+  std::shared_ptr<NamedCacheX> selectedCache;
+  namedCaches_t::iterator it = namedCachesTable.find(findCacheName);
+  if (it != namedCachesTable.end()) {
+    selectedCache = it->second;
+  } else {
+      if(!findCacheName.empty()) {
+        vinfolog("Creating named cache %s", findCacheName);
+      }
+      selectedCache = std::make_shared<NamedCacheX>();
+      selectedCache->namedCache = std::make_shared<DNSDistNamedCache>("", "NONE", "NONE", 0, false);       // last var is debug switch
+      namedCachesTable.insert(std::pair<std::string,std::shared_ptr<NamedCacheX> >(findCacheName, selectedCache));
     }
-  return pool;
+  return selectedCache;
+}
+
+bool deleteNamedCacheEntry(namedCaches_t& namedCachesTable, const string& findCacheName)
+{
+  std::shared_ptr<NamedCacheX> selectedCache;
+  namedCaches_t::iterator it = namedCachesTable.find(findCacheName);
+  if (it != namedCachesTable.end()) {
+
+    selectedCache = it->second;
+    selectedCache->namedCache->init("", "", "", 0);     // minimize resources
+    namedCachesTable.erase(it);
+    return true;
+  }
+  return false;
 }
 
 #endif

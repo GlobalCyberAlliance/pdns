@@ -718,7 +718,7 @@ void removeServerFromPool(pools_t& pools, const string& poolName, std::shared_pt
 // ----------------------------------------------------------------------------
 // GCA - Seth - NamedCache 8/31/2017
 
-#ifdef HAVE_NAMEDCACHE
+#ifdef HAVE_NAMEDCACHE_XXXXXXXXXXXXXXXX
 
 struct NamedCacheX
 {
@@ -761,9 +761,21 @@ extern GlobalStateHolder<NetmaskGroup> g_ACL;
 
 #ifdef HAVE_NAMEDCACHE
 
+struct NamedCacheX
+{
+  std::shared_ptr<DNSDistNamedCache> namedCache{nullptr};
+};
+
+using namedCaches_t=map<std::string, std::shared_ptr<NamedCacheX>>;
+
 extern GlobalStateHolder<namedCaches_t> g_namedCaches;
 
+extern std::atomic<std::uint16_t> g_namedCacheTempFileCount;
+
+extern std::string g_namedCacheTempPrefix;
+
 std::shared_ptr<NamedCacheX> createNamedCacheIfNotExists(namedCaches_t& namedCaches, const string& poolName);
+bool deleteNamedCacheEntry(namedCaches_t& namedCachesTable, const string& findCacheName);
 
 #endif
 // ----------------------------------------------------------------------------

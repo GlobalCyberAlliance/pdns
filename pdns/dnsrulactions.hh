@@ -1264,6 +1264,49 @@ private:
   boost::optional<std::function<void(const DNSQuestion&, DNSDistProtoBufMessage*)> > d_alterFunc;
 };
 
+// ----------------------------------------------------------------------------
+// Seth - GCA - Experimental - 10/22/2017
+// ----------------------------------------------------------------------------
+class RemoteLogActionX : public DNSAction, public boost::noncopyable
+{
+public:
+  RemoteLogActionX(std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<int(const DNSQuestion&, DNSDistProtoBufMessage*)> > alterFuncX): d_logger(logger), d_alterFuncX(alterFuncX)
+  {
+  }
+  DNSAction::Action operator()(DNSQuestion* dq, string* ruleresult) const override
+  {
+   int iRetAction = (int) DNSAction::Action::None;       // default action
+
+#ifdef HAVE_PROTOBUF
+    DNSDistProtoBufMessage message(*dq);
+    {
+      if (d_alterFuncX) {
+        std::lock_guard<std::mutex> lock(g_luamutex);
+        iRetAction = (*d_alterFuncX)(*dq, &message);
+      }
+    }
+    if(iRetAction == (int) DNSAction::Action::Nxdomain) {            // now only send out message if we havea Nxdomain!
+      std::string data;
+      message.serialize(data);
+      d_logger->queueData(data);
+    }
+
+#endif /* HAVE_PROTOBUF */
+    return (DNSAction::Action) iRetAction;
+  }
+  string toString() const override
+  {
+    return "remote logX to " + d_logger->toString();
+  }
+private:
+  std::shared_ptr<RemoteLogger> d_logger;
+  boost::optional<std::function<int(const DNSQuestion&, DNSDistProtoBufMessage*)> > d_alterFuncX;       // returns int now!
+};
+
+
+// ----------------------------------------------------------------------------
+
+
 class SNMPTrapAction : public DNSAction
 {
 public:

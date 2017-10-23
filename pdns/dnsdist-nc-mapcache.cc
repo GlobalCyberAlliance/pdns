@@ -191,6 +191,40 @@ std::string strData;
        }
      }
 
+
+// ----------------------------------------------------------------------------
+// GCA - Seth - 10/20/2017 Experimental Debugging....... SLOW LOADING FROM DISK
+//              This takes about 11 secs to load 800,000 entries
+//              with this delay in the code.
+//              Used to debug named cache reloading
+// ----------------------------------------------------------------------------
+
+#ifdef LOAD_CDB_MAP
+     long int ii;
+     int jj = 0;
+     for(ii=0; ii < 30; ii++) {
+        long int kk = 0;
+        for(kk=0; kk < 1; kk++) {
+           long int ll = 0;
+            for(ll=0; ll < 1; ll++) {
+               jj+=300;
+               jj/= 7;
+               jj*=300;
+               jj/= 5;
+               long int mm = 0;
+               for(mm = 0; mm < 2; mm++)  {
+                  auto xx = mapKeyData.find("xxx");
+                  if (xx == mapKeyData.end()) {
+                    jj += 1;
+                  }
+               }
+            }
+        }
+     }
+#endif
+
+// ----------------------------------------------------------------------------
+
      mapKeyData.insert ( std::pair<std::string, std::string>(strKey, strData) );
      iEntriesRead++;
     }
