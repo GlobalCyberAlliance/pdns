@@ -41,6 +41,16 @@ dig_test_rpz_spoof(){
 }
 
 
+dig_test_rpz_walk(){
+	./dig-test-rpz-walk.sh
+        pause
+}
+
+dig_test_rpz_walk2(){
+	./dig-test-rpz-walk2.sh
+        pause
+}
+
 # function to display menus
 show_menus() {
 	clear
@@ -52,6 +62,8 @@ show_menus() {
 	echo "3. dig-test-rpz()"
 	echo "4. dig-test-rpz-uppercase()"
 	echo "5. dig-test-rpz-spoof()"
+	echo "6. dig-test-rpz-walk()"
+	echo "7. dig-test-rpz-walk2()"
 	echo "0. Exit"
 }
 # read input from the keyboard and take a action
@@ -67,6 +79,8 @@ read_options(){
 		3) dig_test_rpz ;;
 		4) dig_test_rpz_uppercase ;;
 		5) dig_test_rpz_spoof ;;
+		6) dig_test_rpz_walk ;;
+		7) dig_test_rpz_walk2 ;;
 		0) exit 0;;
 		*) echo -e "${RED}Error...${STD}" && sleep 2
 	esac

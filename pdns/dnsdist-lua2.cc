@@ -790,8 +790,15 @@ void moreLua(bool client)
         lookup()          - use string with dns name & return lua readable table
                            - parameters:
                                 strQuery -  string to lookup without extra period at end of query string
+                                mode     -  optional integer for walking mode
+                                            0 - default, no walking
+                                            1 - walk dns name from right to left
+                                            2 - walk dns name from left to right
+                                            3 - walk dns name from right to left - alternate non vector
+                                debug    -  optional boolean, if true then warnlog debugging - not for normal use
                            - example:
                                 iResult = getNamedCache("xxx"):lookup("bad.example.com")
+                                iResult = getNamedCache("xxx"):lookup("bad.example.com", 1)
                            - return lua table with QTag fields:
                                 fields:
                                     found - boolean indicating if data found or not
@@ -801,8 +808,15 @@ void moreLua(bool client)
         lookupQ()          - use DNSQuestion & return results in lua readable table and the internal DNSQuestion QTag object.
                            - parameters:
                                 DNSQuestion -  object passed to function setup by addLuaFunction() in dnsdist configuration file.
+                                mode     -  optional integer for walking mode
+                                            0 - default, no walking
+                                            1 - walk dns name from right to left
+                                            2 - walk dns name from left to right
+                                            3 - walk dns name from right to left - alternate non vector
+                                debug    -  optional boolean, if true then warnlog debugging - not for normal use
                            - example:
                                 iResult = getNamedCache("xxx"):lookupQ(dq)
+                                iResult = getNamedCache("xxx"):lookupQ(dq, 1)
                            - return lua table with QTag fields:
                                 DNSQuestion QTag fields:
                                     found - boolean indicating if data found or not
@@ -1176,9 +1190,17 @@ void moreLua(bool client)
      * 		"data"	Any associated data, as a string. This value may be
      * 			nil, or an empty string.
      */
-    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool>>(std::shared_ptr<DNSDistNamedCache>::*)(std::string)>("lookup", [](const std::shared_ptr<DNSDistNamedCache> pool, const std::string& query) {
+    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool>>(std::shared_ptr<DNSDistNamedCache>::*)(std::string, const boost::optional<int>, const boost::optional<bool>)>("lookup",
+                    [](const std::shared_ptr<DNSDistNamedCache> pool, const std::string& query, const boost::optional<int> walkMode, const boost::optional<bool> debug) {
     std::unordered_map<string, boost::variant<string, bool>> tableResult;
-    
+    int iWalkMode = 0;
+    if (walkMode) {
+      iWalkMode = *walkMode;
+    }
+    bool bDebug = false;
+    if (debug) {
+      bDebug = *debug;
+    }
     // Normalize, and validate the query by making sure it isn't a zero-length
     // string, and remove the trailing period from the query, if there is one.
     std::string q = toLower(query);
@@ -1193,7 +1215,7 @@ void moreLua(bool client)
       std::shared_ptr<DNSDistNamedCache> nc = pool;
 
       std::string data;
-      int hitType = nc->lookup(q, data);
+      int hitType = nc->lookupWalk(q, data, iWalkMode, bDebug);
       bool found = !(hitType == CACHE_HIT::HIT_NONE);
 
       tableResult.insert({"found", found});
@@ -1223,8 +1245,17 @@ void moreLua(bool client)
      * 		"data"
      * 			Any associated data, if nc_found == "yes".
      */
-    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool> >(std::shared_ptr<DNSDistNamedCache>::*)(DNSQuestion *dq)>("lookupQ", [](const std::shared_ptr<DNSDistNamedCache> pool, DNSQuestion *dq) {
+    g_lua.registerFunction<std::unordered_map<string, boost::variant<string, bool> >(std::shared_ptr<DNSDistNamedCache>::*)(DNSQuestion *dq, const boost::optional<int>, const boost::optional<bool>)>("lookupQ",
+                    [](const std::shared_ptr<DNSDistNamedCache> pool, DNSQuestion *dq, const boost::optional<int> walkMode, const boost::optional<bool> debug) {
     std::unordered_map<string, boost::variant<string, bool>> tableResult;
+    int iWalkMode = 0;
+    if (walkMode) {
+      iWalkMode = *walkMode;
+    }
+    bool bDebug = false;
+    if (debug) {
+      bDebug = *debug;
+    }
     if (! (pool)) {
       return tableResult;
     }
@@ -1241,7 +1272,7 @@ void moreLua(bool client)
     }
 
     std::string strRet;
-    int hitType = nc->lookup(strQuery, strRet);
+    int hitType = nc->lookupWalk(strQuery, strRet, iWalkMode, bDebug);
     bool found = !(hitType == CACHE_HIT::HIT_NONE);
 
     tableResult.insert({"found", found});

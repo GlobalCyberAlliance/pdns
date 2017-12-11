@@ -137,6 +137,44 @@ test_original_simple(){
         pause
 }
 
+
+test_load_spoof_walk_right_to_left(){
+	CFG_FILE="dnsdist-named-cache-test-3-spoof-load-walk-right.conf"
+	CONFIG_FILE=$DIR$SLASH$CFG_FILE
+	echo "current directory: " $DIR
+	echo ""
+	echo "configuration file: " $CONFIG_FILE
+	echo ""
+
+	./dnsdist --config=$CONFIG_FILE
+        pause
+}
+
+
+test_load_spoof_walk_left_to_right(){
+	CFG_FILE="dnsdist-named-cache-test-3-spoof-load-walk-left.conf"
+	CONFIG_FILE=$DIR$SLASH$CFG_FILE
+	echo "current directory: " $DIR
+	echo ""
+	echo "configuration file: " $CONFIG_FILE
+	echo ""
+
+	./dnsdist --config=$CONFIG_FILE
+        pause
+}
+
+test_load_spoof_walk_right_to_left_alt(){
+	CFG_FILE="dnsdist-named-cache-test-3-spoof-load-walk-right-alt.conf"
+	CONFIG_FILE=$DIR$SLASH$CFG_FILE
+	echo "current directory: " $DIR
+	echo ""
+	echo "configuration file: " $CONFIG_FILE
+	echo ""
+
+	./dnsdist --config=$CONFIG_FILE
+        pause
+}
+
 # function to display menus
 show_menus() {
 	clear
@@ -153,6 +191,9 @@ show_menus() {
 	echo "8. non-named cache lua access of cdb"
 	echo "9. simple demo of lua config - no cdb, only reject entry is 1jw2mr4fmky.net, else forward to dns"
 	echo "a. loadFromCDB() - debug"
+	echo "b. loadFromCDB() with spoofing response and dns walking - right to left"
+	echo "c. loadFromCDB() with spoofing response and dns walking - left to right"
+	echo "d. loadFromCDB() with spoofing response and dns walking - right to left - alternate"
 	echo "0. Exit"
 }
 # read input from the keyboard and take a action
@@ -174,6 +215,9 @@ read_options(){
 		9) test_original_simple ;;
 		0) exit 0;;
 		a) test_load_debug ;;
+		b) test_load_spoof_walk_right_to_left ;;
+		c) test_load_spoof_walk_left_to_right ;;
+		d) test_load_spoof_walk_right_to_left_alt ;;
 		*) echo -e "${RED}Error...${STD}" && sleep 2
 	esac
 }

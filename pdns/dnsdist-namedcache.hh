@@ -85,6 +85,7 @@ public:
   void     resetCounters();
   bool     isFileOpen();
   int      lookup(const std::string& strQuery, std::string& strData);
+  int      lookupWalk(const std::string& strQuery, std::string& strData, int iWalkMode = 0, bool bDebug = false);
   bool     reset();
   std::string getCacheTypeText(bool bLoadBindMode = false);
   std::string getCacheModeText();
