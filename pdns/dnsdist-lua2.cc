@@ -1039,9 +1039,6 @@ void moreLua(bool client)
           std::shared_ptr<DNSDistNamedCache> nc = pool;
           if (nc) {
             nc->getNamedCacheStatusTable(tableResult);
-#ifdef TRASH
-            tableResult.insert({"objCount", std::to_string(nc.use_count())});
-#endif
           }
         }
         return(tableResult);
@@ -1058,9 +1055,6 @@ void moreLua(bool client)
 	    return;
 	  }
 	  g_outputBuffer = nc->getNamedCacheStatusText();
-#ifdef TRASH
-	  g_outputBuffer += "Object count....: " + std::to_string(nc.use_count()) + "\n";
-#endif
         } else {
           throw std::runtime_error("Cannot show statistics for a nil named cache");
 	}
