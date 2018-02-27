@@ -89,6 +89,19 @@ std::vector<std::shared_ptr<DynBPFFilter> > g_dynBPFFilters;
 vector<ClientState *> g_frontends;
 GlobalStateHolder<pools_t> g_pools;
 
+
+// GCA- NamedCache
+#ifdef HAVE_NAMEDCACHE
+
+namedCaches_t g_namedCacheTable;
+
+std::atomic<std::uint16_t> g_namedCacheTempFileCount;
+
+std::string g_namedCacheTempPrefix = "-4rld";
+
+#endif
+
+
 bool g_snmpEnabled{false};
 bool g_snmpTrapsEnabled{false};
 DNSDistSNMPAgent* g_snmpAgent{nullptr};
@@ -330,6 +343,28 @@ bool fixUpResponse(char** response, uint16_t* responseLen, size_t* responseSize,
   return true;
 }
 
+// GCA - copy qTag data into response object from question
+int copyQTag(DNSResponse &dr, const std::shared_ptr<QTag> qTagData)
+{
+  int iCount = 0;
+
+  if(qTagData != nullptr) {
+    if(dr.qTag == nullptr) {
+      dr.qTag = std::make_shared<QTag>();
+      }
+
+    if(dr.qTag != nullptr) {
+      for (const auto& itr : qTagData->tagData) {
+        dr.qTag->add(itr.first, itr.second);
+        iCount++;
+        }
+    }
+  }
+  return(iCount);
+}
+
+
+
 #ifdef HAVE_DNSCRYPT
 bool encryptResponse(char* response, uint16_t* responseLen, size_t responseSize, bool tcp, std::shared_ptr<DnsCryptQuery> dnsCryptQuery, dnsheader** dh, dnsheader* dhCopy)
 {
@@ -357,6 +392,7 @@ bool encryptResponse(char* response, uint16_t* responseLen, size_t responseSize,
 
 static bool sendUDPResponse(int origFD, char* response, uint16_t responseLen, int delayMsec, const ComboAddress& origDest, const ComboAddress& origRemote)
 {
+
   if(delayMsec && g_delay) {
     DelayedPacket dp{origFD, string(response,responseLen), origRemote, origDest};
     g_delay->submit(dp, delayMsec);
@@ -437,12 +473,14 @@ try {
 
       uint16_t addRoom = 0;
       DNSResponse dr(&ids->qname, ids->qtype, ids->qclass, &ids->origDest, &ids->origRemote, dh, sizeof(packet), responseLen, false, &ids->sentTime.d_start);
+
 #ifdef HAVE_PROTOBUF
       dr.uniqueId = ids->uniqueId;
 #endif
       if (!processResponse(localRespRulactions, dr, &ids->delayMsec)) {
         continue;
       }
+
 
 #ifdef HAVE_DNSCRYPT
       if (ids->dnsCryptQuery) {
@@ -858,7 +896,6 @@ bool processQuery(LocalStateHolder<NetmaskTree<DynBlock> >& localDynNMGBlock,
     WriteLock wl(&g_rings.queryLock);
     g_rings.queryRing.push_back({now,*dq.remote,*dq.qname,dq.len,dq.qtype,*dq.dh});
   }
-
   if(g_qcount.enabled) {
     string qname = (*dq.qname).toString(".");
     bool countQuery{true};
@@ -1182,6 +1219,7 @@ try
       unsigned int consumed = 0;
       DNSName qname(query, len, sizeof(dnsheader), false, &qtype, &qclass, &consumed);
       DNSQuestion dq(&qname, qtype, qclass, dest.sin4.sin_family != 0 ? &dest : &cs->local, &remote, dh, sizeof(packet), len, false);
+
 #ifdef HAVE_PROTOBUF
       dq.uniqueId = uuidGenerator();
 #endif
@@ -1246,6 +1284,12 @@ try
         uint32_t allowExpired = ss ? 0 : g_staleCacheEntriesTTL;
         if (packetCache->get(dq, consumed, dh->id, cachedResponse, &cachedResponseSize, &cacheKey, allowExpired)) {
           DNSResponse dr(dq.qname, dq.qtype, dq.qclass, dq.local, dq.remote, (dnsheader*) cachedResponse, sizeof cachedResponse, cachedResponseSize, false, &realTime);
+
+// GCA - copy qTag data into response object from question
+//              allows normal cache hit to pass qTag data
+
+          copyQTag(dr, dq.qTag);
+
 #ifdef HAVE_PROTOBUF
           dr.uniqueId = dq.uniqueId;
 #endif

@@ -21,11 +21,17 @@
  */
 #pragma once
 
+//#include "dnsdist-lrucache.hh"
+
 #include <atomic>
 #include <unordered_map>
 #include "lock.hh"
 
+
 struct DNSQuestion;
+
+// GCA - named cache
+#include "dnsdist-namedcache.hh"
 
 class DNSDistPacketCache : boost::noncopyable
 {

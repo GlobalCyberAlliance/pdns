@@ -1,0 +1,314 @@
+Notes on dnsdist 10-4-2017
+Seth Ornstein
+Global Cyber Alliance.
+
+A brief description of how to build and use the test version of dnsdist with named caches.
+
+To set things up:
+
+git clone -b dnsdist-named-caches https://github.com/GlobalCyberAlliance/pdns.git
+
+cd into pdns/zzz-gca-example which has my extra scripts, utilities, notes, etc - this is not part of the actual distribution.
+
+
+Compile dnsdist with the libsodium option (needed for protobuf use) and the named caches option enabled by running build-dnsdist2-namedcache.sh
+
+Install tinycdb - libcdb-dev version 0.78
+
+Make sure you have lua 5.1 installed on your computer.
+
+cd into the lua-tinycdb-0.2-modified-Makefile directory, which is inside pdns/zzz-gca-example.
+
+Run make with the specially modified Makefile which uses lua 5.1
+
+Run the test-tinycdb.lua program to verify that lua, tinycdb and the cdb database all work together.
+
+
+There are also some test scripts for your exploration in the CDB_Database directory which are described in notes-cdb.txt in that directory.
+
+Ready the powerdns generic protobuf server by generating dnsmessage_pb2.py in pdns/contrib/ by following the instructions in the top couple lines of 
+pdns/contrib/ProtobufLogger.py:
+	run: protoc -I=../pdns/ --python_out=. ../pdns/dnsmessage.proto
+
+For extra speed in processing there is a special version with no console text output located in: pdns/zzz-gca-example/ProtobufServerAlt
+
+
+Now you should be actually ready to test dnsdist:
+
+1. Open a console in pdns/zzz-gca-example and run ./protobuf-server2.sh
+
+2. Open another console in pdns/zzz-gca-example and run ./dnsdist-named-cache-B.sh
+
+3. Open another console in pdns/zzz-gca-example and run ./dig-test-nocookie.sh
+
+   This should produce output in the protobuf server console similar to this (notice that the word FWD appears):
+
+[2017-07-12 17:24:00.414274] Response of size 55: 127.0.0.1 -> 127.0.0.1 (UDP), id: 56469, uuid: 134f672434b34f36bef01ad48b06ec7b
+- Question: 1, 1, google.com.
+- Query time: 2017-07-12 17:24:00.395219
+- Response Code: 0, RRs: 1, Tags: Trans, FWD
+	 - 1, 1, google.com., 299, 172.217.7.174
+
+4. From the same console used in step #3 run ./dig-test-nocookie.sh again
+
+   This should produce output in the protobuf server console similar to this (notice that the word CACHE appears):
+
+[2017-07-12 17:24:04.693645] Response of size 55: 127.0.0.1 -> 127.0.0.1 (UDP), id: 33312, uuid: 8aa92d90666d4007801c893cd2245a0b
+- Question: 1, 1, google.com.
+- Query time: 2017-07-12 17:24:04.693599
+- Response Code: 0, RRs: 1, Tags: Trans, CACHE
+	 - 1, 1, google.com., 295, 172.217.7.174
+
+5. From the same console used in steps #3 and #4 and run ./dig-test-rpz.sh
+
+   This should produce output in the protobuf server console similar to this (notice that the word RPZ appears):
+
+[2017-07-12 17:24:26.907319] Response of size 56: 127.0.0.1 -> 127.0.0.1 (UDP), id: 48430, uuid: 59552d4fa7df4944ad1a949a0b970b54
+- Question: 1, 1, 1jw2mr4fmky.net.
+- Query time: 1969-12-31 19:00:00.0
+- Response Code: 3, RRs: 1, Tags: lua-time, 17:24:26-07/12/17,Test1, One Two Three,lua-ver, Lua 5.1,Test2, Four Five Six,Trans, RPZ,RPZ-Info, dga,threatstop,From, 127.0.0.1:55350,TCP, false
+	 - 1, 1, 1jw2mr4fmky.net., 456, 127.0.0.1
+
+
+6. Further testing:
+   Compile the utility gca_cdb_util at: https://github.com/GlobalCyberAlliance/gca_cdb_util.git
+
+   This utility can make cdb files and test operation localy of dnsdist.
+   To test out local operation of dnsdist, run the 'T' or 'U' commands.
+
+   Options 'B', 'C' and 'E' are usefull ones for building cdb files.
+
+   To change the configuration parameters of the utility, modify the file config.txt which should be in the same directory as gca_cdb_util
+   
+
+   To maximize transaction speed you can run ./protobuf-server-alt.sh which starts the protobuf server with no console output in place of the normal one.
+   The python code is located in: pdsn/zzz-gca-example/ProtobufServerAlt and is pretty much a copy of the standard one in contrib/ProtobufLogger.py which
+   most of text processing commented out.
+
+
+
+Important files:
+
+
+	build-dnsdist2-namedcache.sh - script to build dnsdist with libsodium and named cache options enabled.
+
+	./make-dnsdist2.sh - make file to recompile dnsdist without doing an entire build - need to have run ./build-dnsdist2-namedcache.sh at least once before.
+
+	dnsdist-namedcache-B.conf - 10/4/2017 demonstration config file for dnsdist that uses protobuf and named caches.
+
+        ./dnsdist-namedcache-B.sh - 10/4/2017 launch dnsdist using the dnsdist-namedcache-B.conf configuration file.
+
+	build-dnsdist2.sh - script to build dnsdist with the libsodium option enabled - needed for protobuf operation.
+
+	./protobuf-server2.sh - launch the generic protobuf server which is in pdns/contrib 
+
+	./protobuf-server-alt.sh launch the modified generic protobuf server which is in pnds/zzz-gca-example/ProtobufServerAlt that has no console output.
+
+	./dig-test-nocookie.sh - script to send a regular request to dnsdist, no cookie option was needed to work with dnsdist cache bug (may have be fixed alread)
+
+	./dig-test-nocookie2.sh - script to send a regular request to dnsdist, no cookie option was needed to work with dnsdist cache bug (may have be fixed alread)
+
+	./dig-test-rpz.sh - script to send a rpz request to dnsdist.
+
+	./test-all.sh - script to call all regression tests for dnsdist.
+
+	./test-protobuf.sh - script to call only the regression test for the protobuf module in dnsdist.
+
+	./test-tinycdb.lua - lua code to test the operation of lua, tinycdb and the cdb database together.
+
+	dnsdist.conf - vanilla demonstration config file for dnsdist that does not use tinycdb for simple demonstration.
+
+	dnsdist2-complex.conf - demonstration config file for dnsdist that uses tinycdb for accessing rpz database.
+
+	dnsdist-namedcache.conf - outdated demonstration config file for dnsdist that uses protobuf and named caches.
+
+
+	./dnsdist-notes-7-12-2017.txt - older notes for demonstrating dnsdist with protobuf and without named caches.
+	
+
+Files that got modifed for the named cache version of dnsdist:
+
+	dnsdist-lua.cc - lua interface functions
+	dnsdist-lua2.cc - lua interface functions
+	dnsdist.cc / dnsdist.hh - contains class NamedCacheX and g_namedCaches for map of NamedCaches
+
+Files that are new:
+
+	dnsdist-cdbio.cc / dnsdist-cdbio.hh - read cdb file object
+	dnsdist-namedcache.cc / dnsdist-namedcache.hh - class for a named-cache
+	dnsdist-nc-lrucache.cc / dnsdist-nc-lrucache.hh - lru (Least Recently Used) cache object, new version using std::list & std::unorderedmap
+	dnsdist-nc-lrucache2.cc / dnsdist-nc-lrucache2.hh - lru (Least Recently Used) cache object using own DoublyLinkedList object.
+	dnsdist-nc-mapcache.cc / dnsdist-nc-mapcache.hh - map cache object
+	dnsdist-nc-namedcache.cc / dnsdist-nc-namedcache.hh - mostly virtual functions
+	dnsdist-nc-nocache.cc / dnsdist-nc-nocache.hh - no cache (does nothing) & no cache cdb (just cdb)
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+Note:  All new lua commands (10/10/2017) are located in dnsdist-lua2.cc starting at line 725
+
+       Also quick grep for "GCA" works for getting quickly to modified code segments, except for code in the "new" files listed above.
+
+       
+// ----------------------------------------------------------------------------
+// Seth - GCA - named cache - 10/10/2017
+//      see dnsdist config file pdns/zzz-gca-example/dnsdist-named-cache-B.conf for examples.
+// ----------------------------------------------------------------------------
+// new lua functions - 10/10/2017
+//
+// NamedCacheX general methods:
+//      addNamedCache([strCacheName]) - create a named cache if it doesn't exist
+//                         - parameters:
+//                               strCacheName - cache name, defaults to "default"
+//                        - example: addNamedCache("yyy")
+//      showNamedCaches() - display list of named caches on terminal
+//                        - example: showNamedCaches()
+//
+//      closeNamedCache() - close a named cache, creates it if doesn't exist.
+//                          Used to free up resources used by a no longer needed cache
+//      reloadNamedCache([strCacheNameA], [maxEntries])
+//                        - parameters:
+//                          [strCacheName] - named cache to reload - else "default"
+//                          [maxEntries] - maxEntries if it is going to be changed, only works if "bindToCDB" type named cache.
+//                        - example:reloadNamedCache("xxx")
+//
+// NamedCacheX methods:
+//      getNamedCache([strCacheName]) - get named cache ptr, create if not exist
+//                         - parameters:
+//                               strCacheName - cache name, defaults to "default"
+//                         - example:
+//                               ncx = getNamedCache("xxx")
+//      getStats()         - get statistics in a table
+//                         - example:
+//                               tableStat2 = ncx:getStats()
+//      showStats()        - directly print out statistics to console
+//                         - example:
+//                               getNamedCache("xxx"):showStats()
+//      resetCounters()    - reset statistic counters for the named cache
+//                         - example:
+//                               getNamedCache("xxx"):resetCounters()
+//      wasFileOpenedOK()  - return true if cdb file was opened OK
+//                         - example:
+//                               print(getNamedCache("xxx"):wasFileOpenedOK())
+//      getErrNum()        - return error message number (errno, from last i/o operation)
+//                         - example:
+//                               print(getNamedCache("xxx"):getErrNum())
+//      getErrMsg()        - return error message text
+//                         - example:
+//                               print(getNamedCache("xxx"):getErrMsg())
+//      loadFromCDB()      - (re)initialize a new cache entirely into memory
+//                         - parameters:
+//                               strCacheName - cdb file path name to use
+//			   - returns:
+//				 true if everything went ok
+//                         - examples:
+//                               loadFromCDB("xxx.cdb")
+//      bindToCDB(strCdbName, [maxEntries], [strMode]) - (re)initialize a new lru cache using a cdb file
+//                         - parameters:
+//                               strCdbName - cdb file path name to use
+//                               maxEntries - number of max entries to store in memory
+//                                         The default is 100000
+//                               strMode - "none", "cdb", "all"
+//                                         none - store nothing in memory
+//                                         cdb  - store cdb hits in memory
+//                                         all  - store all requests (even missed) in memory
+//                                         The default is "cdb"
+//			   - returns:
+//				 true if everything went ok
+//                         - examples:
+//                              loadFromCDB("xxx.cdb", "cdb", 200000)
+//                              loadFromCDB("xxx.cdb")  -- mode defaults to cdb, maxEntries to 10000
+//      getNamedCacheReasonText(strReason) - get reason text given string number - for debugging
+//                         - parameters:
+//                              strReason - 'integer' string from QTag field reason
+//			   - returns:
+//				 string with reason for cache hit
+//                         - example:
+//                              getNamedCacheReasonText(tResult.reason)
+//      lookup(strQuery)   - use string with dns name & return lua readable table
+//                         - parameters:
+//                              strQuery -  string to lookup in named cache
+//                         - example:
+//                              iResult = getNamedCache("xxx"):lookup("bad.example.com")
+//                         - return lua table with QTag fields:
+//                              fields:
+//                                  found - one character string indicating if data found or not
+//                                          "T" - found with data
+//                                          "F" - not found, OR found without data
+//                                  reason - 'integer' value as string:
+//                                          CACHE_HIT::NOT_READY         - -1 (cache not read yet)
+//                                          CACHE_HIT::HIT_NONE          -  0 (match not found)
+//                                          CACHE_HIT::HIT_CDB           -  1 (match found in cdb file, data field not empty)
+//                                          CACHE_HIT::HIT_CACHE         -  2 (match found in cache, data field not empty)
+//                                          CACHE_HIT::HIT_CACHE_NO_DATA -  3 (match found in cache, empty data field)
+//                                          CACHE_HIT::HIT_CDB_NO_DATA   -  4 (match found in cdb file, empty data field)
+//                                  data - string from cdb table match
+//      lookupQ(DNSQuestion) - use DNSQuestion & addTag to store search results in DNSQuestion QTag object automatically
+//                             called inside lua subroutine setup with addLuaAction().
+//                           - QTag table can be read with lua function getTagArray() located inside lua function setup 
+//                             by RemoteLogAction() which is called before sending information out via protobuf.
+//                         - example:
+//                              iResult = getNamedCache("xxx"):lookupQ(dq)
+//                         - return lua table with QTag fields:
+//                              DNSQuestion QTag fields:
+//                                  found - one character string indicating if data found or not
+//                                          "T" - found with data
+//                                          "F" - not found, OR found without data
+//                                  reason - 'integer' value as string:
+//                                          CACHE_HIT::NOT_READY         - -1 (cache not read yet)
+//                                          CACHE_HIT::HIT_NONE          -  0 (match not found)
+//                                          CACHE_HIT::HIT_CDB           -  1 (match found in cdb file, data field not empty)
+//                                          CACHE_HIT::HIT_CACHE         -  2 (match found in cache, data field not empty)
+//                                          CACHE_HIT::HIT_CACHE_NO_DATA -  3 (match found in cache, empty data field)
+//                                          CACHE_HIT::HIT_CDB_NO_DATA   -  4 (match found in cdb file, empty data field)
+//                                  data - string from cdb table match
+
+// ----------------------------------------------------------------------------
+example console commands:
+
+create a named cache:  
+	addNamedCache("aaa")
+bind the named cache to a cdb with default type ("cdb") and max entries (10000), print true if OK
+	print(getNamedCache("aaa"):bindToCDB("blocklist.cdb"))
+bind the named cache to a cdb with specified type ("cdb") and specified max entries (200000), print true if OK
+	print(getNamedCache("aaa"):bindToCDB("blocklist.cdb", "cdb", 200000))
+bind the named cache to a cdb with specified type ("all" - cache cdb & all attempts) and default max entries (10000), print true if OK
+	print(getNamedCache("aaa"):bindToCDB("blocklist.cdb", "all", 200000))
+load the entire cdb file into memory, print true if OK
+	print(getNamedCache("aaa"):loadFromCDB("blocklist.cdb"))
+was the associated file for the named cache opened correctly
+	print(getNamedCache("aaa"):wasFileOpenedOK())
+was there a named cache error - 0 is no error
+	print(getNamedCache("xxx"):getErrNum())
+get the named cache error message - zero length string for no error
+	print(getNamedCache("xxx"):getErrMsg())
+lookup an entry:
+	test=getNamedCache("aaa"):lookup("1fuks551ut9x8d1gs9u801k0v9g7.net")
+see if there was a hit:
+	print(string.format("%s",test.found))
+if there was a hit, see the associated data:
+	print(string.format("%s",test.data))
+if there was a hit, see what kind it was:
+	print(string.format("%s",test.reason))
+get a text description of the reason
+	print(string.format("%s", getNamedCacheReasonText(test.reason)))
+show statistics for a named cache on the console:
+	getNamedCache("aaa"):showStats()
+get statistics for a named cache in a table
+	tabX=getNamedCache("aaa"):getStats()
+reset the statistic counters for a named cache
+	getNamedCache("aaa"):resetCounters()
+reload a named cache
+	reloadNamedCache("aaa")
+reload a named cache with a different number of max entries (only changes BindToCDB() max entries)
+	reloadNamedCache("aaa", 23456)
+close down the named cache
+	closeNamedCache("aaa")
+show all named caches
+	showNamedCaches()
+
+
+
+
+
+

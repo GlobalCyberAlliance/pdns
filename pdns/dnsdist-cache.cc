@@ -24,6 +24,8 @@
 #include "dnsparser.hh"
 #include "dnsdist-cache.hh"
 
+
+
 DNSDistPacketCache::DNSDistPacketCache(size_t maxEntries, uint32_t maxTTL, uint32_t minTTL, uint32_t tempFailureTTL, uint32_t staleTTL, bool dontAge): d_maxEntries(maxEntries), d_maxTTL(maxTTL), d_tempFailureTTL(tempFailureTTL), d_minTTL(minTTL), d_staleTTL(staleTTL), d_dontAge(dontAge)
 {
   pthread_rwlock_init(&d_lock, 0);

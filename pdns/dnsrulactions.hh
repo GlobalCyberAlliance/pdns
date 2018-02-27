@@ -1275,6 +1275,64 @@ private:
   boost::optional<std::function<void(const DNSQuestion&, DNSDistProtoBufMessage*)> > d_alterFunc;
 };
 
+
+// GCA - allow protobuf generation & execute next action, alternate method
+class RemoteLogActionX : public DNSAction, public boost::noncopyable
+{
+public:
+
+  RemoteLogActionX(std::shared_ptr<RemoteLogger> logger, boost::optional<std::function<std::tuple<int, string>(DNSQuestion*, DNSDistProtoBufMessage*)> > alterFuncX): d_logger(logger), d_alterFuncX(alterFuncX)
+  {
+  }
+  DNSAction::Action operator()(DNSQuestion* dq, string* ruleresult) const override
+  {
+   int iRetAction = (int) DNSAction::Action::None;       // default action
+
+#ifdef HAVE_PROTOBUF
+    DNSDistProtoBufMessage message(*dq);
+      if (d_alterFuncX) {
+        std::lock_guard<std::mutex> lock(g_luamutex);
+        auto ret  = (*d_alterFuncX)(dq, &message);
+        std::string strTemp = std::get<1>(ret);
+        iRetAction = (int) std::get<0>(ret);
+        std::string data;
+       switch(iRetAction) {
+         case (int)DNSAction::Action::Nxdomain:             // Nxdomain - send out protobuf
+            message.serialize(data);
+            d_logger->queueData(data);
+            break;
+         case (int)DNSAction::Action::Spoof:                // Spoof - send out protobuf
+            std::vector<std::string> addrs;
+            stringtok(addrs, strTemp, " ,");
+            if (addrs.size() > 0) {
+              ComboAddress spoofAddr(strTemp);
+              message.setResponder(spoofAddr);              // need to set spoof address out thru protobuf msg
+            }
+            message.serialize(data);
+            d_logger->queueData(data);
+            break;
+       }
+        if(ruleresult)
+           *ruleresult=std::get<1>(ret);
+        return (Action)std::get<0>(ret);
+      }
+
+#endif /* HAVE_PROTOBUF */
+
+    return (DNSAction::Action) iRetAction;
+  }
+  string toString() const override
+  {
+    return "remote logX to " + d_logger->toString();
+  }
+private:
+  std::shared_ptr<RemoteLogger> d_logger;
+  boost::optional<std::function<std::tuple<int, string>(DNSQuestion*, DNSDistProtoBufMessage*)> > d_alterFuncX;       // returns int/string now!
+
+};
+
+
+
 class SNMPTrapAction : public DNSAction
 {
 public:

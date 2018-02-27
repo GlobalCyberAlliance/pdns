@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE abiword PUBLIC "-//ABISOURCE//DTD AWML 1.0 Strict//EN" "http://www.abisource.com/awml.dtd">
+<abiword template="false" xmlns:ct="http://www.abisource.com/changetracking.dtd" xmlns:fo="http://www.w3.org/1999/XSL/Format" xmlns:math="http://www.w3.org/1998/Math/MathML" xid-max="53" xmlns:dc="http://purl.org/dc/elements/1.1/" styles="unlocked" fileformat="1.0" xmlns:svg="http://www.w3.org/2000/svg" xmlns:awml="http://www.abisource.com/awml.dtd" xmlns="http://www.abisource.com/awml.dtd" xmlns:xlink="http://www.w3.org/1999/xlink" version="0.99.2" xml:space="preserve" props="dom-dir:ltr; document-footnote-restart-section:0; document-endnote-type:numeric; document-endnote-place-enddoc:1; document-endnote-initial:1; lang:en-US; document-endnote-restart-section:0; document-footnote-restart-page:0; document-footnote-type:numeric; document-footnote-initial:1; document-endnote-place-endsection:0">
+<!-- ======================================================================== -->
+<!-- This file is an AbiWord document.                                        -->
+<!-- AbiWord is a free, Open Source word processor.                           -->
+<!-- More information about AbiWord is available at http://www.abisource.com/ -->
+<!-- You should not edit this file by hand.                                   -->
+<!-- ======================================================================== -->
+
+<metadata>
+<m key="abiword.date_last_changed">Tue Oct  3 20:15:46 2017
+</m>
+<m key="abiword.generator">AbiWord</m>
+<m key="dc.creator">SethO</m>
+<m key="dc.date">Tue Oct  3 16:07:05 2017
+</m>
+<m key="dc.format">application/x-abiword</m>
+</metadata>
+<rdf>
+</rdf>
+<history version="3" edit-time="18896" last-saved="1507076146" uid="2c5a915c-a86d-11e7-8dfb-cae68fca4aa6">
+<version id="3" started="1507061225" uid="2b4d111e-a899-11e7-8dfb-cae68fca4aa6" auto="0" top-xid="32"/>
+</history>
+<styles>
+<s type="P" name="Normal" followedby="Current Settings" props="font-family:Times New Roman; margin-top:0pt; color:000000; margin-left:0pt; text-position:normal; widows:2; font-style:normal; text-indent:0in; font-variant:normal; font-weight:normal; margin-right:0pt; font-size:12pt; text-decoration:none; margin-bottom:0pt; line-height:1.0; bgcolor:transparent; text-align:left; font-stretch:normal"/>
+</styles>
+<pagesize pagetype="Letter" orientation="portrait" width="8.500000" height="11.000000" units="in" page-scale="1.000000"/>
+<section xid="14" props="page-margin-footer:0.5in; page-margin-header:0.5in">
+<p style="Normal" xid="15" props="text-align:left; dom-dir:ltr"><c>Man, that looks pretty good! I only have the following requests:</c></p>
+<p style="Normal" xid="1" props="text-align:left; dom-dir:ltr"><c>- For the `bindToCDB` method, please drop any reference to "RPZ"; what the CDBs are used for is up to the operator.</c></p>
+<p style="Normal" xid="27" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="28" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold">I’ll change “rpz” to “cdb” and leave the functioning the same.</c></p>
+<p style="Normal" xid="29" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="2" props="text-align:left; dom-dir:ltr"><c>- I was initially on-board with your idea for a negative cache (IIRC, to prevent unnecessary CDB lookups if the named cache is bound to an on-disk file) , but after thinking about it a little, it could be used to DoS dnsdist by filling up the negative cache, and exhausting memory; negative cache entries would need to have an extremely short TTL, but should ideally be configurable by the operator. That being said, I am still fond of the idea of a negative cache, but it presents a new (I hate using this phrase) "attack vector" that needs to be considered. Additionally, the negative cache would probably have to be purged when the CDB is reloaded, or re-bound.</c></p>
+<p style="Normal" xid="30" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="32" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold">I’m viewing the negative cache as just an entry that did not get found previously in the cdb (either in the cache or the disk).  So these ‘missed’ entries should just fill up the lru cache in the same percentage as the average proportion of cdb / (passed on to powerdns) ratio.  There doesn’t need to be a TTL for these ‘missed’ entries in the lru cache, they will just get replaced in the lru cache just like they would be if the cache was only dealing with cdb entries.  There should be no security issue as the lru cache is designed to ‘fill up’.  All that would happen I believe if someone were trying to ‘fill-up’ the named-cache would be slower performance as the cdb file would end up being read more often.</c></p>
+<p style="Normal" xid="31" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="3" props="text-align:left; dom-dir:ltr"><c>- When returning from one of the `lookup*` methods, I don't know if it is necessary to distinguish between whether the lookup was successful against the in-memory cache (`CACHE_HIT::HIT_CACHE`), or the data source (`CACHE_HIT::HIT_CDB`). Incrementing a statistics counter is probably sufficient. Additionally, indicating there is no data in a cache hit is something best left to be checked in Lua; in certain situations (e.g. a named cache used as a "whitelist"), there will likely be no reason to ever associate data with a given lookup key, so the C++ code can be spared the few instructions required to determine whether or not there is any associated data, and if the operator is crafting a CDB containing a whitelist without associated data, they can opt out of checking if `data == null` on a cache-hit.</c></p>
+<p style="Normal" xid="33" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="35" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold">In looking at the existing lua interface to dnsdist, I think a null is never returned for anything.  I wouldn’t swear by that though, but I think all the C++ code seemed to do that.  So if that’s the case, you can’t check for data being null.  I returned the integer states to make it more flexible, as you can always do == 0 instead of false and &gt; 0 for true and it all works the same.  I did however add a new flag CACHE_HIT::NOT_READY which is equal to -1 - see below - but that shouldn’t mess things up but give more flexibility.</c></p>
+<p style="Normal" xid="34" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="4" props="text-align:left; dom-dir:ltr"><c>- What is the purpose of `CACHE_HIT::NOT_READY`? In what case would this be returned? If it's during initial startup, that's a context/situation where it is totally fine to block; conversely, if a cache is being reloaded, or re-bound, that's not a good time to perform a blocking operation.</c></p>
+<p style="Normal" xid="36" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="37" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold">The purpose of CACHE_HIT::NOT_READY is to be able to tell initially when the named cache is ready to go.  That should only be an issue with the loadFromCDB() method that loads everything into memory.  Otherwise the updating of an existing cache shouldn’t produce that message.</c></p>
+<p style="Normal" xid="38" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="5" props="text-align:left; dom-dir:ltr"><c>- The `lookupQ` method should have the same return value(s) as `lookup`.</c></p>
+<p style="Normal" xid="43" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="44" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold">OK</c></p>
+<p style="Normal" xid="39" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="6" props="text-align:left; dom-dir:ltr"><c>- Please don't prefix the table keys returned by `lookup` with `"nc_"`, it's redundant.</c></p>
+<p style="Normal" xid="40" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="42" props="text-align:left; dom-dir:ltr"><c></c><c props="font-weight:bold">I’ll remove that prefix to the keys.</c></p>
+<p style="Normal" xid="41" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="7" props="text-align:left; dom-dir:ltr"><c>- `nc_found` should be a Boolean value, not a string.</c></p>
+<p style="Normal" xid="45" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="47" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold">I can change that, though we could go with the integer scheme that I mentioned before for more flexibility.</c></p>
+<p style="Normal" xid="52" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold"></c></p>
+<p style="Normal" xid="53" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold; color:ff0000">PROBLEM - dnsdist uses it’s own methods to interface between lua and C++.  All examples have tables of the same type, ie. all strings or all doubles.</c></p>
+<p style="Normal" xid="46" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="8" props="text-align:left; dom-dir:ltr"><c>- To be able to distinguish hits against the negative cache, from complete cache misses (not in the in-mem cache, and not in the data source), I think adding an extra key (holding a Boolean value) to the table returned by `lookup` would probably work.   Lua's `if` statements (and ternary statements, which are just sugar-coated `if`s) short-circuit, so if someone cares to know whether a cache-miss was caused by a negative cache hit, they can do so succinctly. (edited)</c></p>
+<p style="Normal" xid="9" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="48" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold">OK, I can do this.</c></p>
+<p style="Normal" xid="10" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="12" props="text-align:left; dom-dir:ltr"><c>To provide an example of what I have in mind, for the last point, if a user does this: ```</c></p>
+<p style="Normal" xid="13" props="text-align:left; dom-dir:ltr"><c>results = getNamedCache("whitelist"):lookup("www.google.com")</c></p>
+<p style="Normal" xid="16" props="text-align:left; dom-dir:ltr"><c>they might be able to do something like this:</c></p>
+<p style="Normal" xid="17" props="text-align:left; dom-dir:ltr"><c>```if not results.found and results.negativeCacheHit then</c></p>
+<p style="Normal" xid="18" props="text-align:left; dom-dir:ltr"><c>  ...</c></p>
+<p style="Normal" xid="19" props="text-align:left; dom-dir:ltr"><c>end</c></p>
+<p style="Normal" xid="20" props="text-align:left; dom-dir:ltr"><c>```</c></p>
+<p style="Normal" xid="21" props="text-align:left; dom-dir:ltr"><c props="font-family:Times New Roman; font-size:12pt; lang:en-US; text-position:normal; font-weight:bold; font-style:normal; text-decoration:none">OK, I can do this.</c></p>
+<p style="Normal" xid="22" props="font-family:Times New Roman; font-size:12pt; dom-dir:ltr; lang:en-US; text-align:left; text-position:normal; font-weight:bold; font-style:normal; text-decoration:none"><c></c></p>
+<p style="Normal" xid="23" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="24" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="26" props="text-align:left; dom-dir:ltr"><c>Oh, and one more question: for the `deleteResources` method, how is this implemented? I just quickly looked up how Lua does garbage collection, and it uses a mark-and-sweep garbage collector. So, as long as their are no references to an object, it will be reaped.</c></p>
+<p style="Normal" xid="49" props="text-align:left; dom-dir:ltr"><c></c></p>
+<p style="Normal" xid="50" props="text-align:left; dom-dir:ltr"><c props="font-weight:bold">The function deleteResources is to shutdown/free up just about all of the memory used by a cache.  When you create a namedCache in dnsdist you will either do it in the start-up code of the dnsdist lua configuration file or from the console manually.  Either way the named cache you created will never go out of scope, so the only way of getting rid of all the memory and the open cdb handle for the lru cache is to manually do it.  Though the way the commands work right now, you could just call newNamedCache() with the same name as the existing named cache and it will free up everything the same way that deleteResources would do.</c></p>
+<p style="Normal" xid="51" props="text-align:left; dom-dir:ltr"><c></c></p>
+</section>
+</abiword>

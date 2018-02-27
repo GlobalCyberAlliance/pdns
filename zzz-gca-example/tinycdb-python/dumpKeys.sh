@@ -1,0 +1,2 @@
+cdb -l test.cdb
+

@@ -1,0 +1,324 @@
+Notes on dnsdist 9-29-2017
+Seth Ornstein
+Global Cyber Alliance.
+
+A brief description of how to build and use the test version of dnsdist with named caches.
+
+To set things up:
+
+git clone -b dnsdist-named-caches https://github.com/GlobalCyberAlliance/pdns.git
+
+cd into pdns/zzz-gca-example which has my extra scripts, utilities, notes, etc - this is not part of the actual distribution.
+
+
+Compile dnsdist with the libsodium option (needed for protobuf use) and the named caches option enabled by running build-dnsdist2-namedcache.sh
+
+Make sure you have lua 5.1 installed on your computer.
+
+cd into the lua-tinycdb-0.2-modified-Makefile directory, which is inside pdns/zzz-gca-example.
+
+Run make with the specially modified Makefile which uses lua 5.1
+
+Run the test-tinycdb.lua program to verify that lua, tinycdb and the cdb database all work together.
+
+
+There are also some test scripts for your exploration in the CDB_Database directory which are described in notes-cdb.txt in that directory.
+
+Ready the powerdns generic protobuf server by generating dnsmessage_pb2.py in pdns/contrib/ by following the instructions in the top couple lines of 
+pdns/contrib/ProtobufLogger.py:
+	run: protoc -I=../pdns/ --python_out=. ../pdns/dnsmessage.proto
+
+For extra speed in processing there is a special version with no console text output located in: pdns/zzz-gca-example/ProtobufServerAlt
+
+
+Now you should be actually ready to test dnsdist:
+
+1. Open a console in pdns/zzz-gca-example and run ./protobuf-server2.sh
+
+2. Open another console in pdns/zzz-gca-example and run ./dnsdist-namedcache.sh
+
+3. Open another console in pdns/zzz-gca-example and run ./dig-test-nocookie.sh
+
+   This should produce output in the protobuf server console similar to this (notice that the word FWD appears):
+
+[2017-07-12 17:24:00.414274] Response of size 55: 127.0.0.1 -> 127.0.0.1 (UDP), id: 56469, uuid: 134f672434b34f36bef01ad48b06ec7b
+- Question: 1, 1, google.com.
+- Query time: 2017-07-12 17:24:00.395219
+- Response Code: 0, RRs: 1, Tags: Trans, FWD
+	 - 1, 1, google.com., 299, 172.217.7.174
+
+4. From the same console used in step #3 run ./dig-test-nocookie.sh again
+
+   This should produce output in the protobuf server console similar to this (notice that the word CACHE appears):
+
+[2017-07-12 17:24:04.693645] Response of size 55: 127.0.0.1 -> 127.0.0.1 (UDP), id: 33312, uuid: 8aa92d90666d4007801c893cd2245a0b
+- Question: 1, 1, google.com.
+- Query time: 2017-07-12 17:24:04.693599
+- Response Code: 0, RRs: 1, Tags: Trans, CACHE
+	 - 1, 1, google.com., 295, 172.217.7.174
+
+5. From the same console used in steps #3 and #4 and run ./dig-test-rpz.sh
+
+   This should produce output in the protobuf server console similar to this (notice that the word RPZ appears):
+
+[2017-07-12 17:24:26.907319] Response of size 56: 127.0.0.1 -> 127.0.0.1 (UDP), id: 48430, uuid: 59552d4fa7df4944ad1a949a0b970b54
+- Question: 1, 1, 1jw2mr4fmky.net.
+- Query time: 1969-12-31 19:00:00.0
+- Response Code: 3, RRs: 1, Tags: lua-time, 17:24:26-07/12/17,Test1, One Two Three,lua-ver, Lua 5.1,Test2, Four Five Six,Trans, RPZ,RPZ-Info, dga,threatstop,From, 127.0.0.1:55350,TCP, false
+	 - 1, 1, 1jw2mr4fmky.net., 456, 127.0.0.1
+
+
+6. Further testing:
+   Compile the utility gca_cdb_util at: https://github.com/GlobalCyberAlliance/gca_cdb_util.git
+
+   This utility can make cdb files and test operation localy of dnsdist.
+   To test out local operation of dnsdist, run the 'T' or 'U' commands.
+
+   Options 'B', 'C' and 'E' are usefull ones for building cdb files.
+
+   To change the configuration parameters of the utility, modify the file config.txt which should be in the same directory as gca_cdb_util
+   
+
+   To maximize transaction speed you can run ./protobuf-server-alt.sh which starts the protobuf server with no console output in place of the normal one.
+   The python code is located in: pdsn/zzz-gca-example/ProtobufServerAlt and is pretty much a copy of the standard one in contrib/ProtobufLogger.py which
+   most of text processing commented out.
+
+
+
+Important files:
+
+	build-dnsdist2-namedcache.sh - script to build dnsdist with libsodium and named cache options enabled.
+
+	build-dnsdist2.sh - script to build dnsdist with the libsodium option enabled - needed for protobuf operation.
+
+	dig-test-nocookie.sh - script to send a regular request to dnsdist, no cookie option was needed to work with dnsdist cache bug (may have be fixed alread)
+
+	dig-test-rpz.sh - script to send a rpz request to dnsdist.
+
+	dnsdist.conf - vanilla demonstration config file for dnsdist that does not use tinycdb for simple demonstration.
+
+	dnsdist2-complex.conf - demonstration config file for dnsdist that uses tinycdb for accessing rpz database.
+
+	dnsdist-namedcache.conf - demonstration config file for dnsdist that uses protobuf and named caches.
+
+	./dnsdist-notes-7-12-2017.txt - older notes for demonstrating dnsdist with protobuf and without named caches.
+	
+	./make-dnsdist2.sh - make file to recompile dnsdist without doing an entire build
+
+	./protobuf-server2.sh - launch the generic protobuf server which is in pdns/contrib 
+
+	./protobuf-server-alt.sh launch the modified generic protobuf server which is in pnds/zzz-gca-example/ProtobufServerAlt that has no console output.
+
+	./test-all.sh - script to call all regression tests for dnsdist.
+
+	./test-protobuf.sh - script to call only the regression test for the protobuf module in dnsdist.
+
+	./test-tinycdb.lua - lua code to test the operation of lua, tinycdb and the cdb database together.
+
+
+Files that got modifed for the named cache version of dnsdist:
+
+	dnsdist-lua.cc - lua interface functions
+	dnsdist-lua2.cc - lua interface functions
+	dnsdist.cc / dnsdist.hh - contains class NamedCacheX and g_namedCaches for map of NamedCaches
+
+Files that are new:
+
+	dnsdist-cdbio.cc / dnsdist-cdbio.hh - read cdb file object
+	dnsdist-namedcache.cc / dnsdist-namedcache.hh - class for a named-cache
+	dnsdist-nc-lrucache.cc / dnsdist-nc-lrucache.hh - lru (Least Recently Used) cache object, new version using std::list & std::unorderedmap
+	dnsdist-nc-lrucache2.cc / dnsdist-nc-lrucache2.hh - lru (Least Recently Used) cache object using own DoublyLinkedList object.
+	dnsdist-nc-mapcache.cc / dnsdist-nc-mapcache.hh - map cache object
+	dnsdist-nc-namedcache.cc / dnsdist-nc-namedcache.hh - mostly virtual functions
+	dnsdist-nc-nocache.cc / dnsdist-nc-nocache.hh - no cache (does nothing) & no cache cdb (just cdb)
+
+
+New LUA functions for named cache:
+
+	addNamedCache(“xxx”)		create a named cache if it does not exist
+
+	showNamedCaches()		display list of named caches on terminal
+
+	swapNamedCaches(“xxx”, “yyy”)	swap the contents of the two caches
+
+
+	getNamedCache(“xxx”) 		return NamedCacheX object to named cache.
+					object is created if it doesn’t exist.
+
+NamedCacheX
+
+	addNamedCache()			create/initialize a named cache
+					no pointer is returned.
+					if cache exists then it is set to type none
+					all existing entries in cache are removed
+
+
+	showStats()			display statistics for the cache on terminal
+
+	getStats()			get statistics for the cache, return them in a table
+
+	reset()				reset named cache to be type  and mode “none”
+
+	resetCounters()			reset statistic counters 
+
+	isFileOpen()			return true if cdb was opened ok
+
+
+	lookupQuestTag(dnsQuestion)  - lookup query contained in dnsQuestion
+
+			return integer with found status
+					0 - LOC::NONE  	              no match found
+					1 - LOC::CDB   	              match in cdb file
+					2 - LOC::CACHE 	              match in cache
+					3 - LOC::CDB_NO_DATA      match in cdb, but no data
+					4 - LOC::CACHE_NO_DATA match in cache, but no data
+
+			results are stored in dnsQuestion’s QTag object.
+				DNSQuestion QTag fields: 
+					“nc_found” - text return status
+						zero length string - match not found
+						"cdb"    - match found in cdb file
+						"cache"  - match found in cache
+						"cdb_no_data   - match found in cdb file
+						"cache_no_data"  - match found in cache
+					“nc_data” - data field in cdb/cache entry
+						string from cdb table match
+						zero length string- match not found
+
+	init(cacheType, cacheMode, fileName, maxEntries) 
+
+					(re) initialize named cache			
+					Creates and returns a DNSDistNamedCache object.
+
+					cacheType:  (text case ignored)
+						"NONE" 	No action taken, empty cache.
+						"CDB"    	Always read cdb file, empty cache.
+						“LRU”    	Least recently used cache.
+						“LRU2”    	Least recently used cache, ver #2.
+						“MAP”   	Entire cdb stored  in ram.
+
+					cache Mode: (text case ignored)
+						“NONE” 	No entries cached.
+						“RPZ”     	cdb entries cached
+						“ALL”     	cdb & missed cdb entries cached.
+								Missed entries are stored with
+								the data field being empty.  The
+								reason for storing missed cdb
+								attempts is to prevent regular
+								dns searches from having to 
+								always read the cdb file which
+								would happen if only cdb entries
+								were cached.
+
+					fileName:	Path name to cdb file.
+					maxEntries:	Maximum number of cache entries.
+							Ignored for “MAP” option.
+
+
+
+
+
+Notes on dnsdist2-complex.conf
+
+    The configuration file is a bit hard to follow, but it permits our goals to be accomplished with only adding a minimum of 
+    internal lua callable dnsdist C++ code.  The critical rules are located together at the bottom of the config file.
+
+    If this file is too cluttered you may want to look at the simpler dnsdist.conf example.  This configuration file does not
+    use the cdb database and might be a little easier to study.
+
+A brief description of dnsdist2-complex.conf:
+
+    The top 74 lines load in the lua-tinycdb library, the demo blocklist file (~800,000 entries) and preform some simple tests
+    to verify that the cdb library is working.
+
+    Lines 80 thru 93 select the DNS servers to be used, currently only the google ones are enabled.
+
+    Lines 95 thru 110 setup the "masterpool" pool cache.
+
+    Line 116 allows dnsdist to listen to requests on port 5200, which allows for non-root testing on my machine.
+
+    Lines 119, 120 and 121 are used to select the ip address and port to communicate with the protobuf server.
+
+    Lines 124 thru 152 is a simple maintenance function, whose purpose is to display some stats once a minute on the dnsdist console.
+
+    Lines 153 thru 222 are the luaCheckBL function, this code is called by the first rule which is on line 405.  This function
+    checks the lua-tinycdb RPZ database to see if there is a match.  If there is a match the next rule is processed, which
+    is on line 407 which causes the lua function luaLogBL to be called.  If there is no match in the RPZ database the 
+    luaCheckBL function is returned with the pool action which allows normal processing to occur using the "masterpool'.  The 
+    luaCheckBL function contains two non-native dnsdist lua callable functions dq:setTag() and dq:setTagArray().  The 
+    purpose of these functions is to store the information from the RPZ (blacklist) hit until the luaLogBL function is called. 
+    This will allow the additional infromation about the blacklist entry to be added to the protobuf output.
+
+    Lines 227 to 325 are the luaLogBL function.  This function is called by the rule on line 407, which is arrived at by the luaCheckBL
+    function passing on to the next rule which happens when there is a match in the RPZ (blacklist) database.  The function
+    allows the addition of new information in the protobuf output.  It contains a few new dnsdist lua functions.
+    dr:getTagArray() to read the table generated in the luaCheckBL function and pbMsg:setTagArray() to enter information in the 'tags'
+    field of the protobuf message to be sent out.  pbMsg:setResponseCode(dnsdist.NXDOMAIN) which sets the protobuf response code to be
+    NXDOMAIN. To set the protobuf message to be type 'response' instead of 'query' pbMsg:setProtobufResponseType() is called.  This 
+    function can also set the query time in the protobuf message if desired with the optional parameters.  Lastly the function
+    pbMsg:addResponseRR() is called to add a 'RR' to the protobuf message.
+
+ 
+    Lines 330 thru 355 are the luaLogForward function.  This function is called by the rule on line 417 in response to a 'normal'
+    ie. not a cache or rpz lookup.  This function allows the addition of new information in the protobuf output.  An example of
+    this is the function call on line 345: pbMsg:setTag("Trans. FWD").  It's purpose is to label the protobuf message as resulting
+    from a normal lookup in the 'tags' field.
+
+    Lines 363 thru 380 are the luaLogCache function.  This function is called by the rule on line 414 in response to a 'cache' hit.
+    This function allows the addition of new information in the protobuf output.  An example of
+    this is the function call on line 345: pbMsg:setTag("Trans. CACHE").  It's purpose is to label the protobuf message as resulting
+    from a normal lookup in the 'tags' field.
+
+    Lines 386 to 394 are the luaRetNXDOMAIN function.  This function is called by the rule on line 409 which occurs after the 
+    luaLogBL function is called by the previous rule when a RPZ (blacklist) hit occurs.  It's purpose is to return a NXDOMAIN message
+    to the client which a RPZ (blacklist) hit has occurred.
+
+
+A description of the new Lua commands for dnsdist:
+
+    Lua additional functions that act on the DNSQuestion parameter dq.
+
+    They are  expected to be used inside of a Lua function that is setup for use in the dnsdist configuration file by the addLuaAction function.   
+    They are used to store text label and value pairs in the DNSQuestion dq and accessed by the DNSResponse Lua functions below.
+
+	To store a text label and value pair in the DNSQuestion:
+
+		dq:setTag(“LabelText”, “ValueText”) 
+
+	To store values as a table in the DNSQuestion structure:
+
+		dq:setTagArray(exampleTable)
+
+
+
+
+    Lua additional functions that act on the DNSDistProtoBufMessage parameter pbMsg.
+
+    These are expected to be located inside of a Lua function that is setup for use in the dnsdist configuration file by the RemoteLogAction function as 
+    the “alterFunction”.  They are used to modify the protobuf message that is being sent to the protobuf server.
+
+	To store text values in the protobuf  “tags” field:
+
+		pbMsg:setTag(“ValueText”)
+
+	To store text values  as a table in protobuf tag fields
+
+		pbMsg:setTagArray(exampleTable)
+
+
+	To change the protobuf message from a ‘query’ to a ‘response’.
+        Optional query time parameters seconds and fractional micro-seconds may be passed too.
+
+		pbMsg:setProtobufResponseType([seconds, micro-seconds])
+
+
+	To add a 'RR' record to the protobuf type response message:
+	strReqName is a string with the name the client requested.
+	type is integer RR type, 1 is 'A'.
+        class is the integer RR class, 1 is 'IN'
+	ttl is RR 'time to live' and is an integer like 456.
+	blobData is the data part of the RR.
+             	An example for type 1, class 1 is:  blobData = '\127' .. '\000' .. '\000' .. '\001'
+
+		pbMsg:addResponseRR(strReqName, type, class, ttl, blobData)
+

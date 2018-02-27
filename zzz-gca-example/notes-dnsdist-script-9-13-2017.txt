@@ -1,0 +1,41 @@
+Notes on dnsdist script
+9/13/2017
+Seth Ornstein
+
+Directory zzz-gca-example is located under the top pdns directory
+
+build-dnsdist2.sh - complete rebuild of dnsdist
+
+dig-test-nocookie.sh - good no cookie named dns request of local dnsdist at 127.0.0.1:5200
+
+dig-test-nocookie2.sh - good no cookie named dns request of local dnsdist at 127.0.0.1:5200 
+
+dig-test-rpz.sh - known bad dns request of local dnsdist at 127.0.0.1:5200
+
+dig-test-rpz-uppercase.sh - same as dig-test-rpz.sh but with request in uppercase
+
+dnsdist2.sh - run dnsdist with configuration file: dnsdist-simple.conf
+
+dnsdist2-complex.sh - run dnsdist with configuration file: dnsdist-complex.conf
+
+dnsdist-check-config.sh - have dnsdist check configuration file, but not run: dnsdist.conf
+
+dnsdist-complex.conf - complex test configuration file
+
+dnsdist-named-cache.conf - named cache test configuration file
+
+dnsdist-named-cache.sh - run dnsdist with named cache configuration file
+
+dnsdist-simple.conf - simple test configuration file
+
+make-dnsdist2.sh - make script for dnsdist
+
+protobuf-server2.sh - script to start the simple protobuf server located in pdns/contrib
+
+protobuf-server-alt.sh - script to start the modified simple protobuf server (text output removed) located in pdns/zzz-cga-example/ProtobufServerAlt
+
+test-all.sh - run all dnsdist build tests
+
+test-protobuf.sh - run just the dnsdist protobuf build test
+
+test-tinycdb.lua - stand alone lua code to test reading cdb database

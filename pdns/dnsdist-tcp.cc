@@ -566,6 +566,17 @@ void* tcpClientThread(int pipefd)
 
         dh = (struct dnsheader*) response;
         DNSResponse dr(&qname, qtype, qclass, &dest, &ci.remote, dh, responseSize, responseLen, true, &queryRealTime);
+
+/*
+   GCA - copy qTag data into response object from question - 8/23/2017
+                allows normal cache hit to pass qTag data
+                however still problems with normal non cache as the
+                response object is created differently up above on line 430
+                it does not have access to the question object directly.
+*/
+
+        copyQTag(dr, dq.qTag);
+
 #ifdef HAVE_PROTOBUF
         dr.uniqueId = dq.uniqueId;
 #endif
